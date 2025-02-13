@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reservas</title>
+    <style>
+        .navbar {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('index') }}" style="color: white;">Regresar a la página principal</a>
+        <a href="{{ url_for('admin.index') }}" style="color: white;">Panel de Administración</a>
+    </div>
+
+    <h1>Reservas</h1>
+    <table>
+        <tr>
+            <th>ID Pasante</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+        </tr>
+        {% for reserva in reservas %}
+        <tr>
+            <td>{{ reserva.pasante.nombre }}</td>  <!-- Mostrar nombre del pasante -->
+            <td>{{ reserva.fecha }}</td>
+            <td>{{ reserva.confirmada }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

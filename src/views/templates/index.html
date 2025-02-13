@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clínica de Fisioterapia UDLA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        header {
+            background-color: #8B0000;
+            color: rgb(255, 255, 255);
+            text-align: center;
+            padding: 1.5rem;
+        }
+        footer {
+            background-color: #8B0000;
+            color: rgb(255, 255, 255);
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+        .doctor-card {
+            text-align: center;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .doctor-card img {
+            border-radius: 50%;
+            max-width: 100px;
+        }
+        .social-icons a {
+            margin: 0 0.5rem;
+            text-decoration: none;
+            color: #8B0000;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+        }
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .horarios-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .horario-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .horario-item.ocupado {
+            background-color: #f8f8f8;
+            color: #999;
+        }
+        .ocupado-texto {
+            color: #ff4444;
+            font-size: 0.9em;
+        }
+        .fecha-selector {
+            margin-bottom: 20px;
+        }
+        .especialistas {
+            padding: 2rem;
+            text-align: center;
+        }
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            padding: 0 40px;
+            margin: 20px 0;
+        }
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+            width: 100%;
+        }
+        .carousel-item {
+            flex: 0 0 calc(100% / 3);  /* Muestra 3 doctores a la vez */
+            min-width: calc(100% / 3);
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+        .carousel-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(199, 0, 70, 0.8);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+            transition: background-color 0.3s ease;
+        }
+        .carousel-button:hover {
+            background: rgb(199, 0, 70);
+        }
+        .carousel-button.prev {
+            left: 0;
+        }
+        .carousel-button.next {
+            right: 0;
+        }
+        .doctor-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 1rem;
+            display: block;
+        }
+        .doctor-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button.primary {
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Clínica de Fisioterapia UDLA</h1>
+    </header>
+    <a href="{{ url_for('login') }}">
+        <img src="{{ url_for('static', filename='img/inicio sesion.jpg') }}" alt="Admin" style="width: 50px; height: 50px;">    
+    </a>    
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>Menú</strong></li>
+        </ul>
+        <ul>
+            <li><a href="#doctores">Doctores</a></li>
+            <li><a href="#horarios">Horarios</a></li>
+            <li><a href="#reservas" role="button">Reservas</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <!-- Información de los Doctores -->
+        <section class="especialistas">
+            <h2>Nuestros Especialistas</h2>
+            
+            <div class="carousel-container">
+                <div class="carousel-track">
+                    {% for doctor in doctores %}
+                    <div class="doctor-card carousel-item">
+                        <img src="{{ url_for('static', filename='img/doctores/' + doctor.imagen) }}" 
+                            alt="{{ doctor.nombre }}"
+                            class="doctor-image">
+                        <h3>{{ doctor.nombre }}</h3>
+                        <p>{{ doctor.especialidad }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Horarios y Ubicación -->        <section id="horarios">
+            <h2>Horarios y Ubicación</h2>
+            <div id="horarios-disponibles"></div>
+            <p><strong>Dirección:</strong> Av. Siempre Viva 123, Quito, Ecuador</p>
+            <p><strong>Horarios:</strong> Lunes a Viernes de 8:00 AM a 6:00 PM</p>
+            <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1270.123456789!2d-78.450448!3d-0.1595626!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d591780a036cc3%3A0xd96ad4b7f92bae71!2sUDLA+Arena!5e0!3m2!1ses!2sec!4v1234567890"
+                width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+        </section>
+
+        <!-- Botón de Reservas -->
+        <section id="reservas" aria-label="Formulario de reservas">
+            <h2>Realiza tu Reserva</h2>
+            <a href="/reservar" class="button">Reserva Aquí</a>
+        </section>
+
+        <!-- Redes Sociales -->
+        <section class="social-icons">
+            <h2>Síguenos en Redes Sociales</h2>
+            <a href="#" target="_blank">Facebook</a>
+            <a href="#" target="_blank">Instagram</a>
+            <a href="#" target="_blank">Twitter</a>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2025 Clínica de Fisioterapia UDLA</p>
+    </footer>
+
+    <!-- Modal para mostrar horarios -->
+    <div id="horariosModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Horarios Disponibles</h2>
+            <div class="fecha-selector">
+                <label for="fecha">Seleccione una fecha:</label>
+                <input type="date" id="fecha" min="{{ today }}" onchange="actualizarHorarios()">
+            </div>
+            <div id="listaHorarios" class="horarios-grid"></div>
+        </div>
+    </div>
+
+    <script>
+    let currentIndex = 0;
+    const track = document.querySelector('.carousel-track');
+    const items = document.querySelectorAll('.carousel-item');
+    const itemCount = items.length;
+
+    // Clonar elementos para el carrusel infinito
+    function setupInfiniteCarousel() {
+        // Clonar los primeros elementos al final
+        const firstClone = track.firstElementChild.cloneNode(true);
+        const secondClone = track.children[1].cloneNode(true);
+        const thirdClone = track.children[2].cloneNode(true);
+        
+        // Clonar los últimos elementos al inicio
+        const lastClone = track.lastElementChild.cloneNode(true);
+        const secondLastClone = track.children[itemCount - 2].cloneNode(true);
+        const thirdLastClone = track.children[itemCount - 3].cloneNode(true);
+        
+        // Agregar clones al track
+        track.appendChild(firstClone);
+        track.appendChild(secondClone);
+        track.appendChild(thirdClone);
+        track.insertBefore(lastClone, track.firstElementChild);
+        track.insertBefore(secondLastClone, track.firstElementChild);
+        track.insertBefore(thirdLastClone, track.firstElementChild);
+        
+        // Mover al primer elemento real
+        currentIndex = 3;
+        updateCarousel(false);
+    }
+
+    function updateCarousel(animate = true) {
+        const newTransform = -currentIndex * (100 / 3);
+        track.style.transition = animate ? 'transform 0.5s ease-in-out' : 'none';
+        track.style.transform = `translateX(${newTransform}%)`;
+    }
+
+    function moverCarousel(direction) {
+        clearInterval(autoSlideInterval);
+        if (direction === 1) {
+            currentIndex++;
+        } else {
+            currentIndex--;
+        }
+        
+        updateCarousel();
+        
+        // Verificar si necesitamos saltar al otro extremo
+        track.addEventListener('transitionend', function() {
+            if (currentIndex >= itemCount + 3) {
+                currentIndex = 3;
+                updateCarousel(false);
+            } else if (currentIndex <= 2) {
+                currentIndex = itemCount + 2;
+                updateCarousel(false);
+            }
+        }, { once: true });
+        
+        startAutoSlide();
+    }
+
+    let autoSlideInterval;
+
+    function startAutoSlide() {
+        clearInterval(autoSlideInterval);
+        autoSlideInterval = setInterval(() => {
+            moverCarousel(1);
+        }, 2500);
+    }
+
+    // Inicializar el carrusel
+    setupInfiniteCarousel();
+    startAutoSlide();
+
+    // Detener el carrusel cuando el mouse está sobre él
+    document.querySelector('.carousel-container').addEventListener('mouseenter', () => {
+        clearInterval(autoSlideInterval);
+    });
+
+    // Reanudar el carrusel cuando el mouse sale
+    document.querySelector('.carousel-container').addEventListener('mouseleave', () => {
+        startAutoSlide();
+    });
+
+    function mostrarHorarios(doctorId) {
+        const modal = document.getElementById('horariosModal');
+        modal.style.display = 'block';
+        
+        // Establecer la fecha de hoy como mínima
+        const fechaInput = document.getElementById('fecha');
+        const hoy = new Date().toISOString().split('T')[0];
+        fechaInput.min = hoy;
+        fechaInput.value = hoy;
+        
+        actualizarHorarios(doctorId);
+    }
+
+    function actualizarHorarios(doctorId) {
+        const fecha = document.getElementById('fecha').value;
+        
+        fetch(`/horarios_disponibles?doctor_id=${doctorId}&fecha=${fecha}`)
+            .then(response => response.json())
+            .then(horarios => {
+                const container = document.getElementById('listaHorarios');
+                container.innerHTML = '';
+                
+                horarios.forEach(horario => {
+                    const div = document.createElement('div');
+                    div.className = `horario-item ${horario.disponible ? 'disponible' : 'ocupado'}`;
+                    div.innerHTML = `
+                        <span>${horario.inicio}</span>
+                        ${horario.disponible ? 
+                            `<a href="/reservar?doctor_id=${doctorId}&horario=${horario.inicio}&fecha=${fecha}" 
+                                class="button small">Reservar</a>` : 
+                            '<span class="ocupado-texto">No disponible</span>'}
+                    `;
+                    container.appendChild(div);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Cerrar el modal
+    document.querySelector('.close').onclick = function() {
+        document.getElementById('horariosModal').style.display = 'none';
+    }
+
+    // Cerrar el modal si se hace clic fuera de él
+    window.onclick = function(event) {
+        const modal = document.getElementById('horariosModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+    </script>
+</body>
+</html>

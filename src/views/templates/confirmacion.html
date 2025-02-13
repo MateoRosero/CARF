@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirmación de Reserva</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Confirmación de Reserva</h1>
+    </header>
+    <main class="container">
+        <section>
+            <h2>Detalles de tu Reserva</h2>
+            <p><strong>Nombre y Apellido:</strong> {{ nombre }}</p>
+            <p><strong>Correo Electrónico:</strong> {{ email }}</p>
+            <p><strong>Fecha:</strong> {{ fecha }}</p>
+            <p><strong>Doctor:</strong> {{ doctor.nombre }}</p>
+            <p><strong>Horario:</strong> {{ horario }}</p>
+            <p><strong>Celular:</strong> {{ celular }}</p>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+                <form action="/confirmar" method="POST">
+                    <input type="hidden" name="reserva_id" value="{{ reserva_id }}">
+                    <button type="submit" class="button primary">Confirmar Reserva</button>
+                </form>
+                <form action="/cancelar_reserva" method="POST">
+                    <input type="hidden" name="reserva_id" value="{{ reserva_id }}">
+                    <button type="submit" class="button danger">Cancelar Reserva</button>
+                </form>
+                <a href="/" class="button">Volver al Inicio</a>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <p>© 2025 Clínica de Fisioterapia UDLA</p>
+    </footer>
+</body>
+</html>

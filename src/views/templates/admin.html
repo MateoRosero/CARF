@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Administración</title>
+    <style>
+        .navbar {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .pasantes-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        
+        .pasantes-table th, .pasantes-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .pasantes-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .form-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        
+        .form-container input {
+            margin: 5px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('index') }}" style="color: white;">Regresar a la página principal</a>
+        <a href="{{ url_for('admin.ver_reservas') }}" style="color: white;">Ver Reservas</a>
+    </div>
+
+    <h1>Panel de Administración</h1>
+
+    <!-- Formulario para agregar pasantes -->
+    <div class="form-container">
+        <h2>Agregar Nuevo Pasante</h2>
+        <form action="{{ url_for('admin.agregar_pasante') }}" method="POST">
+            <input type="text" name="nombre" placeholder="Nombre" required>
+            <input type="text" name="cedula" placeholder="Cédula" required>
+            <input type="email" name="correo" placeholder="Correo" required>
+            <input type="text" name="id_banner" placeholder="ID Banner" required>
+            <button type="submit">Agregar Pasante</button>
+        </form>
+    </div>
+
+    <!-- Tabla de pasantes -->
+    <h2>Lista de Pasantes Registrados</h2>
+    <table class="pasantes-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Correo</th>
+                <th>ID Banner</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if pasantes %}
+                {% for pasante in pasantes %}
+                <tr>
+                    <td>{{ pasante.nombre }}</td>
+                    <td>{{ pasante.cedula }}</td>
+                    <td>{{ pasante.correo }}</td>
+                    <td>{{ pasante.id_banner }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4">No hay pasantes registrados</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reserva - Clínica de Fisioterapia UDLA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .form-group {
+            margin-bottom: 15px;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #0099cc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #007399;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="/" style="color: inherit; text-decoration: none;">Página Principal</a></h1>
+    </header>
+    <main class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <section id="reservas" aria-label="Formulario de reservas">
+            <h2>Reservar Cita</h2>
+            <form id="reserva-form" action="{{ url_for('reservar') }}" method="POST">
+                <div class="form-group">
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="celular">Celular:</label>
+                    <input type="text" id="celular" name="celular" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="fecha">Fecha:</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pasante">Seleccione un pasante:</label>
+                    <select id="pasante" name="pasante_id" class="form-control" required>
+                        <option value="">Seleccione un pasante</option>
+                        {% if pasantes %}
+                            {% for pasante in pasantes %}
+                                <option value="{{ pasante.id }}">{{ pasante.nombre }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No hay pasantes disponibles</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="horario">Horario:</label>
+                    <input type="time" id="horario" name="horario" required>
+                </div>
+
+                <button type="submit" class="button primary">Reservar</button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        <p>© 2025 Clínica de Fisioterapia UDLA</p>
+    </footer>
+    <script>
+        function cargarHorarios() {
+            const doctorId = document.getElementById('doctor_id').value;
+            const fecha = document.getElementById('fecha').value;
+            const horariosGrid = document.getElementById('horarios-grid');
+            
+            if (!doctorId || !fecha) return;
+            
+            fetch(`/horarios_disponibles?doctor_id=${doctorId}&fecha=${fecha}`)
+                .then(response => response.json())
+                .then(horarios => {
+                    horariosGrid.innerHTML = '';
+                    horarios.forEach(horario => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = `horario-button ${horario.disponible ? 'disponible' : 'ocupado'}`;
+                        button.textContent = horario.inicio;
+                        button.disabled = !horario.disponible;
+                        
+                        if (horario.disponible) {
+                            button.onclick = () => {
+                                document.querySelectorAll('.horario-button').forEach(btn => 
+                                    btn.classList.remove('selected'));
+                                button.classList.add('selected');
+                                document.getElementById('horario').value = horario.inicio;
+                            };
+                        }
+                        
+                        horariosGrid.appendChild(button);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+
+    <!-- Debug info -->
+    <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
+        <p>Debug info:</p>
+        {% if pasantes %}
+            <p>Número de pasantes: {{ pasantes|length }}</p>
+            <ul>
+            {% for pasante in pasantes %}
+                <li>{{ pasante.id }} - {{ pasante.nombre }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No se encontraron pasantes en la variable pasantes</p>
+        {% endif %}
+    </div>
+</body>
+</html>
