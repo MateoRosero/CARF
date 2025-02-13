@@ -15,7 +15,7 @@ class Reserva(db.Model):
     confirmada = db.Column(db.Boolean, nullable=False, default=False)
     fecha_creacion = db.Column(db.DateTime(timezone=True), nullable=False)
     
-    # Agregar la relación correspondiente
+    # Relación con pasante
     pasante = db.relationship('Pasante', back_populates='reservas')
 
     def __init__(self, nombre, email, fecha, celular, pasante_id, horario):
@@ -28,27 +28,32 @@ class Reserva(db.Model):
         self.confirmada = False
         self.fecha_creacion = datetime.now(timezone.utc)
 
-    @staticmethod
-    def get_horarios_ocupados(doctor_id, fecha):
-        return Reserva.query.filter_by(
-            doctor_id=doctor_id,
-            fecha=fecha,
-            confirmada=True
-        ).with_entities(Reserva.horario).all()
-
-
     def validar(self):
-        if not all([self.nombre, self.email, self.fecha, self.celular]):
+        """Valida que los campos obligatorios no estén vacíos."""
+        if not all([self.nombre, self.email, self.fecha, self.celular, self.horario]):
             return False
         return True
 
     @staticmethod
     def crear_reserva(datos):
+        """ Crea una instancia de Reserva usando el dict 'datos' proveniente del formulario. """
         return Reserva(
             nombre=datos.get('nombre'),
             email=datos.get('email'),
             fecha=datos.get('fecha'),
             celular=datos.get('celular'),
-            doctor_id=datos.get('pasante_id'),
+            pasante_id=datos.get('pasante_id'),
             horario=datos.get('horario')
         )
+
+    @staticmethod
+    def get_horarios_ocupados_pasante(pasante_id, fecha):
+        """
+        Devuelve una lista de tuplas con los horarios ya ocupados (confirmados) 
+        de un pasante en una fecha específica.
+        """
+        return db.session.query(Reserva.horario).filter(
+            Reserva.pasante_id == pasante_id,
+            Reserva.fecha == fecha,
+            Reserva.confirmada == True
+        ).all()

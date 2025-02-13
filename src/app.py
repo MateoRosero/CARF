@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from database import db, init_db
 from config import Config
 import os
@@ -108,21 +108,15 @@ app.add_url_rule('/confirmar',
 app.add_url_rule('/cancelar_reserva', 
                 view_func=ReservaController.cancelar_reserva, 
                 methods=['POST'])
-app.add_url_rule('/ver_pasantes', 
-                view_func=ReservaController.ver_pasantes, 
-                methods=['GET'])
-
 @app.route('/reservar', methods=['GET', 'POST'])
 def reservar():
     try:
-        # Agregamos más logs de debug
+        # Logs de debug
         print("Entrando a la ruta /reservar")
         
-        # Obtener todos los pasantes
+        # Obtener pasantes
         pasantes = Pasante.query.all()
         print(f"Pasantes encontrados: {len(pasantes)}")
-        
-        # Imprimir cada pasante para debug
         for p in pasantes:
             print(f"Pasante: ID={p.id}, Nombre={p.nombre}")
         
@@ -131,22 +125,39 @@ def reservar():
             email = request.form['email']
             celular = request.form['celular']
             fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
-            pasante_id = request.form['pasante_id']
+            pasante_id = int(request.form['pasante_id'])
             horario = request.form['horario']
+
+            # 1. Chequear si el horario ya está ocupado
+            reserva_existente = db.session.query(Reserva).filter_by(
+                pasante_id=pasante_id,
+                fecha=fecha,
+                horario=horario,
+                confirmada=True  # si confirmas la reserva
+            ).first()
+
+            if reserva_existente:
+                flash("El horario ya está ocupado para este pasante.")
+                return redirect(url_for('reservar'))
             
+            # 2. Crear la nueva reserva (por defecto confirmada=False, o True si quieres)
             nueva_reserva = Reserva(
                 nombre=nombre,
                 email=email,
                 celular=celular,
                 fecha=fecha,
                 pasante_id=pasante_id,
-                horario=horario
+                horario=horario,
+                confirmada=False
             )
             
             db.session.add(nueva_reserva)
             db.session.commit()
-            return redirect(url_for('index'))
             
+            flash("Reserva creada correctamente. A la espera de confirmación.")
+            return redirect(url_for('index'))
+        
+        # Si es GET, renderiza el formulario
         return render_template('reservar.html', pasantes=pasantes)
     except Exception as e:
         print(f"ERROR en /reservar: {str(e)}")

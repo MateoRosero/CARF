@@ -1,57 +1,75 @@
 from flask import render_template, request, flash, redirect, url_for
 from models.reserva import Reserva
-from models.doctor import Doctor
+from models.pasante import Pasante
 from database import db
 from datetime import datetime, timedelta, timezone
-from models.pasante import Pasante
 
 class ReservaController:
     @staticmethod
     def mostrar_formulario():
-        doctores = Doctor.query.all()
-        return render_template('reservar.html',
-                            doctores=doctores,
-                            nombre=request.args.get('nombre', ''),
-                            email=request.args.get('email', ''),
-                            fecha=request.args.get('fecha', ''),
-                            celular=request.args.get('celular', ''),
-                            doctor_id=request.args.get('doctor_id', ''))
+        """
+        Muestra el formulario de reserva, con la lista de pasantes disponibles.
+        """
+        pasantes = Pasante.query.all()
+
+        return render_template(
+            'reservar.html',
+            pasantes=pasantes,
+            nombre=request.args.get('nombre', ''),
+            email=request.args.get('email', ''),
+            fecha=request.args.get('fecha', ''),
+            celular=request.args.get('celular', ''),
+            pasante_id=request.args.get('pasante_id', '')
+        )
 
     @staticmethod
     def procesar_reserva():
+        """
+        Procesa el POST (form) de la reserva:
+        1) Toma los datos (nombre, email, fecha, celular, pasante_id, horario).
+        2) Verifica que el pasante no tenga ya ese horario ocupado en la fecha elegida.
+        3) Si todo OK, guarda la reserva en la BD y muestra 'confirmacion.html'.
+        """
         try:
-            fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
-            doctor = Doctor.query.get(int(request.form['doctor_id']))
-            
+            # 1. Parsear la fecha en formato YYYY-MM-DD
+            fecha_str = request.form['fecha']
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+
+            # 2. Obtener el pasante (vía ID del form)
+            pasante_id = request.form['pasante_id']
+            pasante = Pasante.query.get(int(pasante_id))
+
+            # 3. Crear la nueva reserva (no la guarda en la BD todavía)
             nueva_reserva = Reserva(
                 nombre=request.form['nombre'],
                 email=request.form['email'],
                 fecha=fecha,
                 celular=request.form['celular'],
-                doctor_id=doctor.id,
+                pasante_id=pasante.id,
                 horario=request.form['horario']
             )
-            
-            # Verificar si el horario está disponible
-            horarios_ocupados = Reserva.get_horarios_ocupados(
-                nueva_reserva.doctor_id, 
-                nueva_reserva.fecha
-            )
+
+            # 4. Verificar disponibilidad (si ese pasante ya tiene el horario tomado en esa fecha)
+            horarios_ocupados = Reserva.get_horarios_ocupados_pasante(pasante.id, fecha)
             if nueva_reserva.horario in [h[0] for h in horarios_ocupados]:
-                flash('El horario seleccionado ya no está disponible')
+                flash('El horario seleccionado ya no está disponible para este pasante')
                 return redirect(url_for('mostrar_formulario'))
-            
+
+            # 5. Guardar la reserva
             db.session.add(nueva_reserva)
             db.session.commit()
-            
-            return render_template('confirmacion.html',
-                                reserva_id=nueva_reserva.id,
-                                nombre=nueva_reserva.nombre,
-                                email=nueva_reserva.email,
-                                fecha=nueva_reserva.fecha,
-                                celular=nueva_reserva.celular,
-                                doctor=doctor,
-                                horario=nueva_reserva.horario)
+
+            # 6. Renderizar confirmación
+            return render_template(
+                'confirmacion.html',
+                reserva_id=nueva_reserva.id,
+                nombre=nueva_reserva.nombre,
+                email=nueva_reserva.email,
+                fecha=nueva_reserva.fecha,
+                celular=nueva_reserva.celular,
+                pasante=pasante,
+                horario=nueva_reserva.horario
+            )
         except Exception as e:
             db.session.rollback()
             flash('Error al procesar la reserva: ' + str(e))
@@ -59,26 +77,30 @@ class ReservaController:
         
     @staticmethod
     def confirmar_reserva():
+        """
+        Confirma (marcar confirmada=True) la última reserva creada (ejemplo).
+        """
         try:
-            # Obtener la última reserva del usuario
             ultima_reserva = Reserva.query.order_by(Reserva.id.desc()).first()
             if not ultima_reserva:
                 flash('No se encontró la reserva para confirmar')
                 return redirect(url_for('mostrar_formulario'))
 
-            # Actualizar el estado de la reserva si es necesario
             ultima_reserva.confirmada = True
             db.session.commit()
 
             flash('¡Reserva confirmada exitosamente!')
             return redirect(url_for('index'))
         except Exception as e:
-            db.session.rollback()
+            db.session.rollback() 
             flash('Error al confirmar la reserva: ' + str(e))
             return redirect(url_for('mostrar_formulario'))
 
     @staticmethod
     def cancelar_reserva():
+        """
+        Cancela (elimina) la reserva según ID en el form.
+        """
         try:
             reserva_id = request.form.get('reserva_id')
             reserva = Reserva.query.get(reserva_id)
@@ -98,7 +120,9 @@ class ReservaController:
 
     @staticmethod
     def limpiar_reservas_no_confirmadas():
-        """Elimina reservas no confirmadas después de 1 minuto"""
+        """
+        Elimina reservas no confirmadas después de 1 minuto (ejemplo).
+        """
         try:
             tiempo_limite = datetime.now(timezone.utc) - timedelta(minutes=1)
             reservas_no_confirmadas = Reserva.query.filter_by(
@@ -114,8 +138,3 @@ class ReservaController:
         except Exception as e:
             db.session.rollback()
             print(f"Error al limpiar reservas: {str(e)}")
-
-    @staticmethod
-    def ver_pasantes():
-        pasantes = Pasante.query.all()
-        return render_template('ver_pasantes.html', pasantes=pasantes)
