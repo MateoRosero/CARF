@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_file
 from database import db, init_db
 from config import Config
 import os
 from datetime import datetime, timedelta, timezone
 from admin.admin import admin_bp
-
+import qrcode
+import io
+import secrets
+import socket
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -14,7 +17,7 @@ app = Flask(__name__,
 app.config.from_object(Config)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin123@localhost:5432/bd_Clinica_Fisioterapia?client_encoding=utf8'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'tu_clave_secreta_aqui'
+app.secret_key = 'tu_clave_secreta'
 
 # Importar modelos
 from models.doctor import Doctor
@@ -26,11 +29,17 @@ def insertar_doctores_iniciales():
         # Verificar si ya existen doctores
         if Doctor.query.first() is None:
             doctores = [
-                Doctor(nombre="Dr. Juan Pérez", especialidad="Rehabilitación Deportiva", imagen="doctor1.jpg"),
-                Doctor(nombre="Dra. María López", especialidad="Terapia Manual", imagen="doctor2.jpg"),
-                Doctor(nombre="Dr. Sofia Aleman", especialidad="Fisioterapia Neurológica", imagen="Doctora3.jpg"),
-                Doctor(nombre="Dra. Ana Torres", especialidad="Rehabilitación Geriátrica", imagen="doctor4.jpg"),
-                Doctor(nombre="Dr. Luis Mendoza", especialidad="Terapia Respiratoria", imagen="doctor5.jpg")
+                Doctor(nombre="FT. Pablo Andrade ", especialidad="Máster en terapia deportiva", imagen="Pablo Andrade.jpg"),
+                Doctor(nombre="FT. Andrea Palacios ", especialidad="Master en rehabilitación cardiaca y pulmonar", imagen="Andrea Palacios.jpg"),
+                Doctor(nombre="FT. Lenin Pazmiño", especialidad="Máster en patokinesiologia", imagen="Lenin Pazmino.jpg"),
+                Doctor(nombre="FT. María Paz Serrano", especialidad="Máster en terapia respiratoria", imagen="Maria Paz Serrano.jpg"),
+                Doctor(nombre="FT. Guillermo Santillan", especialidad="Máster en terapia manual ortopédica", imagen="Guillermo Santillan.jpg"),
+                Doctor(nombre="FT. Mónica Suárez", especialidad="Máster en neurorehabilitación", imagen="Monica Suarez.jpg"),
+                Doctor(nombre="FT. Daniela Pantoja", especialidad="Máster en Neurorrehabilitacion", imagen="Daniela Pantoja.jpg"),
+                Doctor(nombre="FT. Diana Santana", especialidad="Maestría en Neuro rehabilitación Infantil", imagen="Diana Santana.jpg"),
+                Doctor(nombre="FT. Andrés Logroño", especialidad="Master en terapia manual y manejo del dolor", imagen="Andres Logrono.jpg"),
+                Doctor(nombre="FT. Anthony Brito", especialidad="Coordinador CARF, Master en terapia Manual Ortopédica", imagen="Anthony Brito.jpg"),
+                Doctor(nombre="FT. Andrés Arcos", especialidad="Coordinador académico de fisioterapia, Maestría en Salud y Seguridad Ocupacional", imagen="Andres Arcos.jpg"),
             ]
             
             for doctor in doctores:
@@ -55,10 +64,23 @@ with app.app_context():
     except Exception as e:
         print(f"Error al crear las tablas: {str(e)}")
 
+# Obtener la IP local de la máquina
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+
 # Importar controladores
 from controllers.doctor_controller import DoctorController
 from controllers.reserva_controller import ReservaController
 from controllers.horario_controller import HorarioController
+
+# Datos de autenticación
+USUARIOS = {
+    'admin@admin.com': {'password': 'admin123', 'role': 'admin'},
+    'pasante@pasante.com': {'password': 'pasante123', 'role': 'pasante'}
+}
+
+# Diccionario para almacenar tokens y sus tiempos de expiración
+tokens = {}
 
 @app.before_request
 def limpiar_reservas_antiguas():
@@ -110,105 +132,143 @@ app.add_url_rule('/cancelar_reserva',
                 methods=['POST'])
 @app.route('/reservar', methods=['GET', 'POST'])
 def reservar():
-    try:
-        # Logs de debug
-        print("Entrando a la ruta /reservar")
-        
-        # Obtener pasantes
-        pasantes = Pasante.query.all()
-        print(f"Pasantes encontrados: {len(pasantes)}")
-        for p in pasantes:
-            print(f"Pasante: ID={p.id}, Nombre={p.nombre}")
-        
-        if request.method == 'POST':
-            nombre = request.form['nombre']
-            email = request.form['email']
-            celular = request.form['celular']
-            fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
-            pasante_id = int(request.form['pasante_id'])
-            horario = request.form['horario']
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        email = request.form['email']
+        celular = request.form['celular']
+        fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
+        pasante_id = int(request.form['pasante_id'])
+        horario = request.form['horario']
 
-            # 1. Chequear si el horario ya está ocupado
-            reserva_existente = db.session.query(Reserva).filter_by(
-                pasante_id=pasante_id,
-                fecha=fecha,
-                horario=horario,
-                confirmada=True  # si confirmas la reserva
-            ).first()
+        # Verificar si el horario ya está ocupado
+        reserva_existente = Reserva.query.filter_by(
+            pasante_id=pasante_id,
+            fecha=fecha,
+            horario=horario,
+            confirmada=True
+        ).first()
 
-            if reserva_existente:
-                flash("El horario ya está ocupado para este pasante.")
-                return redirect(url_for('reservar'))
-            
-            # 2. Crear la nueva reserva (por defecto confirmada=False, o True si quieres)
-            nueva_reserva = Reserva(
-                nombre=nombre,
-                email=email,
-                celular=celular,
-                fecha=fecha,
-                pasante_id=pasante_id,
-                horario=horario,
-                confirmada=False
-            )
-            
-            db.session.add(nueva_reserva)
-            db.session.commit()
-            
-            flash("Reserva creada correctamente. A la espera de confirmación.")
-            return redirect(url_for('index'))
-        
-        # Si es GET, renderiza el formulario
-        return render_template('reservar.html', pasantes=pasantes)
-    except Exception as e:
-        print(f"ERROR en /reservar: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return f"Error: {str(e)}", 500
+        if reserva_existente:
+            flash("El horario ya está ocupado para este pasante.")
+            return redirect(url_for('reservar'))
+
+        # Crear la nueva reserva
+        nueva_reserva = Reserva(
+            nombre=nombre,
+            email=email,
+            celular=celular,
+            fecha=fecha,
+            pasante_id=pasante_id,
+            horario=horario,
+            confirmada=False
+        )
+
+        db.session.add(nueva_reserva)
+        db.session.commit()
+
+        flash("Reserva creada correctamente. A la espera de confirmación.")
+        return redirect(url_for('index'))
+
+    pasantes = Pasante.query.all()
+    return render_template('reservar.html', pasantes=pasantes)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        correo = request.form['correo']
+        email = request.form['email']
         contrasena = request.form['contrasena']
-        
-        if correo == 'admin@admin.com' and contrasena == 'admin123':
+        user = USUARIOS.get(email)
+        if user and user['password'] == contrasena:
             session['logged_in'] = True
-            return redirect(url_for('admin'))
+            session['role'] = user['role']
+            if user['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user['role'] == 'pasante':
+                return redirect(url_for('ver_reservas_pasante', pasante_id=1))  # Ajusta el ID según sea necesario
         else:
-            return "Credenciales incorrectas", 401
-
+            flash('Credenciales incorrectas')
     return render_template('login.html')
 
-@app.route('/admin')
-def admin():
-    if not session.get('logged_in'):
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    session.pop('role', None)
+    return redirect(url_for('login'))
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect(url_for('login'))
+    
     pasantes = Pasante.query.all()
     return render_template('admin.html', pasantes=pasantes)
 
-@app.route('/admin/agregar_pasante', methods=['POST'])
-def agregar_pasante():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+@app.route('/pasante/reservas/<int:pasante_id>', methods=['GET', 'POST'])
+def ver_reservas_pasante(pasante_id):
+    if request.method == 'POST':
+        fecha_base = datetime.strptime(request.form['fecha'], '%Y-%m-%d')
+    else:
+        fecha_base = datetime.now()
+
+    dias = obtener_dias_semana(fecha_base)
+    horas = obtener_horas()
+    reservas = Reserva.query.filter(Reserva.fecha.in_([d.date() for d in dias])).all()
     
-    try:
-        nombre = request.form['nombre']
-        cedula = request.form['cedula']
-        correo = request.form['correo']
-        id_banner = request.form['id_banner']
-        
-        nuevo_pasante = Pasante(nombre=nombre, cedula=cedula, correo=correo, id_banner=id_banner)
-        db.session.add(nuevo_pasante)
-        db.session.commit()
-        print(f"Pasante agregado exitosamente: {nombre}")
-        
-    except Exception as e:
-        print(f"Error al agregar pasante: {str(e)}")
-        db.session.rollback()
-        
-    return redirect(url_for('admin'))
+    return render_template('reservas_pasante.html', reservas=reservas, dias=dias, horas=horas)
+
+def obtener_dias_semana(fecha):
+    inicio_semana = fecha - timedelta(days=fecha.weekday())
+    return [inicio_semana + timedelta(days=i) for i in range(5)]
+
+def obtener_horas():
+    return [f"{hora:02}:{minuto:02}" for hora in range(7, 18) for minuto in (0, 30)]
+
+@app.route('/admin/reservas', methods=['GET', 'POST'])
+def ver_reservas():
+    if request.method == 'POST':
+        fecha_base = datetime.strptime(request.form['fecha'], '%Y-%m-%d')
+    else:
+        fecha_base = datetime.now()
+
+    dias = obtener_dias_semana(fecha_base)
+    horas = obtener_horas()
+    reservas = Reserva.query.filter(Reserva.fecha.in_([d.date() for d in dias])).all()
+    return render_template('reservas.html', reservas=reservas, dias=dias, horas=horas)
+
+@app.route('/admin/qr')
+def generar_qr():
+    token = secrets.token_urlsafe(16)
+    tokens[token] = datetime.now() + timedelta(seconds=30)
+
+    # URL del formulario sin modificar su estructura
+    url_formulario = f"https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u&token={token}"
+
+    # Generar QR
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(url_formulario)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    
+    return send_file(buf, mimetype='image/png')
+
+
+
+@app.route('/validar_qr')
+def validar_qr():
+    token = request.args.get('token')
+    expiry = tokens.get(token)
+    
+    if expiry and datetime.now() < expiry:
+        del tokens[token]  # Eliminar el token para que no se reutilice
+        return redirect("https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u")
+    else:
+        return "QR inválido o expirado", 403
 
 app.register_blueprint(admin_bp, url_prefix='/admin')  # Asegúrate de que esto esté presente
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

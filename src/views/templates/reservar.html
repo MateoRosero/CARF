@@ -44,8 +44,6 @@
         {% endwith %}
         <section id="reservas" aria-label="Formulario de reservas">
             <h2>Reservar Cita</h2>
-            <!-- IMPORTANTE: action="{{ url_for('procesar_reserva') }}" 
-                 Asegúrate de que coincide con tu endpoint de Flask -->
             <form id="reserva-form" action="{{ url_for('procesar_reserva') }}" method="POST">
                 <div class="form-group">
                     <label for="nombre">Nombre:</label>
@@ -86,6 +84,14 @@
                     <input type="time" id="horario" name="horario" required>
                 </div>
 
+                <div class="form-group">
+                    <label for="tipo">Tipo de Reserva:</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="evaluacion">Evaluación (90 MINUTOS)</option>
+                        <option value="seguimiento">Seguimiento (60 MINUTOS)</option>
+                    </select>
+                </div>
+
                 <button type="submit" class="button primary">Reservar</button>
             </form>
         </section>
@@ -93,20 +99,5 @@
     <footer>
         <p>© 2025 Clínica de Fisioterapia UDLA</p>
     </footer>
-
-    <!-- Depuración: muestra cuántos pasantes se están recibiendo -->
-    <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
-        <p>Debug info:</p>
-        {% if pasantes %}
-            <p>Número de pasantes: {{ pasantes|length }}</p>
-            <ul>
-            {% for pasante in pasantes %}
-                <li>{{ pasante.id }} - {{ pasante.nombre }}</li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p>No se encontraron pasantes en la variable pasantes</p>
-        {% endif %}
-    </div>
 </body>
 </html>

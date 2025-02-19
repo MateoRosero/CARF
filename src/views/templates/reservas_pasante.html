@@ -59,7 +59,7 @@
 <body>
     <div class="navbar">
         <a href="{{ url_for('index') }}" class="nav-link">Regresar a la página principal</a>
-        <a href="{{ url_for('admin.index') }}" class="nav-link">Panel de Administración</a>
+        <a href="{{url_for('login')}}" class="nav-link">Cerrar sesión</a>
     </div>
 
     <div class="reservas-container">
@@ -87,8 +87,8 @@
                     {% for dia in dias %}
                     <td>
                         {% for reserva in reservas %}
-                        {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
-                                <button class="reserva-btn" onclick="mostrarInfo('{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{ reserva.horario}}')">
+                            {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
+                                <button class="reserva-btn" onclick="mostrarInfo('{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}')">
                                     {{ reserva.pasante.nombre }}
                                 </button>
                             {% endif %}
@@ -116,7 +116,7 @@
                 <div class="info-item"><i class="fas fa-envelope"></i>Email: ${email}</div>
                 <div class="info-item"><i class="fas fa-calendar"></i>Fecha: ${fecha}</div>
                 <div class="info-item"><i class="fas fa-phone"></i>Celular: ${celular}</div>
-                <div class="info-item"><i class="fas fa-clock"></i>Tipo de Reserva: ${tipo}</div>   
+                <div class="info-item"><i class="fas fa-clock"></i>Tipo de Reserva: ${tipo}</div>
                 <div class="info-item"><i class="fas fa-clock"></i>Duracion: ${horario}</div>
             `;
             document.getElementById('infoTexto').innerHTML = infoTexto;

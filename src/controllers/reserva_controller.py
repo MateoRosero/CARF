@@ -19,47 +19,60 @@ class ReservaController:
             email=request.args.get('email', ''),
             fecha=request.args.get('fecha', ''),
             celular=request.args.get('celular', ''),
-            pasante_id=request.args.get('pasante_id', '')
+            pasante_id=request.args.get('pasante_id', ''),
+            tipo=request.args.get('tipo', '')
         )
 
     @staticmethod
     def procesar_reserva():
         """
         Procesa el POST (form) de la reserva:
-        1) Toma los datos (nombre, email, fecha, celular, pasante_id, horario).
+        1) Toma los datos (nombre, email, fecha, celular, pasante_id, horario, tipo).
         2) Verifica que el pasante no tenga ya ese horario ocupado en la fecha elegida.
         3) Si todo OK, guarda la reserva en la BD y muestra 'confirmacion.html'.
         """
         try:
+            nombre = request.form['nombre']
+            email = request.form['email']
+            celular = request.form['celular']
+            fecha = request.form['fecha']
+            pasante_id = request.form['pasante_id']
+            horario = request.form['horario']
+            tipo = request.form['tipo']
+
             # 1. Parsear la fecha en formato YYYY-MM-DD
-            fecha_str = request.form['fecha']
+            fecha_str = fecha
             fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
 
             # 2. Obtener el pasante (vía ID del form)
-            pasante_id = request.form['pasante_id']
             pasante = Pasante.query.get(int(pasante_id))
 
-            # 3. Crear la nueva reserva (no la guarda en la BD todavía)
+            # 3. Calcular el horario de fin
+            horario_fin = ReservaController.calcular_horario_fin(horario, tipo)
+            horario_completo = f"{horario} - {horario_fin}"
+
+            # 4. Crear la nueva reserva (no la guarda en la BD todavía)
             nueva_reserva = Reserva(
-                nombre=request.form['nombre'],
-                email=request.form['email'],
+                nombre=nombre,
+                email=email,
                 fecha=fecha,
-                celular=request.form['celular'],
+                celular=celular,
                 pasante_id=pasante.id,
-                horario=request.form['horario']
+                horario=horario_completo,
+                tipo=tipo
             )
 
-            # 4. Verificar disponibilidad (si ese pasante ya tiene el horario tomado en esa fecha)
+            # 5. Verificar disponibilidad
             horarios_ocupados = Reserva.get_horarios_ocupados_pasante(pasante.id, fecha)
             if nueva_reserva.horario in [h[0] for h in horarios_ocupados]:
                 flash('El horario seleccionado ya no está disponible para este pasante')
                 return redirect(url_for('mostrar_formulario'))
 
-            # 5. Guardar la reserva
+            # 6. Guardar la reserva
             db.session.add(nueva_reserva)
             db.session.commit()
 
-            # 6. Renderizar confirmación
+            # 7. Renderizar confirmación
             return render_template(
                 'confirmacion.html',
                 reserva_id=nueva_reserva.id,
@@ -138,3 +151,15 @@ class ReservaController:
         except Exception as e:
             db.session.rollback()
             print(f"Error al limpiar reservas: {str(e)}")
+
+    @staticmethod
+    def calcular_horario_fin(horario_inicio, tipo):
+        hora, minuto = map(int, horario_inicio.split(':'))
+        if tipo == 'evaluacion':
+            minuto += 90
+        elif tipo == 'seguimiento':
+            minuto += 60
+
+        hora += minuto // 60
+        minuto = minuto % 60
+        return f"{hora:02}:{minuto:02}"

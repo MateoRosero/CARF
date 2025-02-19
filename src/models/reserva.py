@@ -14,11 +14,12 @@ class Reserva(db.Model):
     horario = db.Column(db.String(20), nullable=False)
     confirmada = db.Column(db.Boolean, nullable=False, default=False)
     fecha_creacion = db.Column(db.DateTime(timezone=True), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # Nueva columna para el tipo de reserva
     
     # Relación con pasante
     pasante = db.relationship('Pasante', back_populates='reservas')
 
-    def __init__(self, nombre, email, fecha, celular, pasante_id, horario):
+    def __init__(self, nombre, email, fecha, celular, pasante_id, horario, tipo):
         self.nombre = nombre
         self.email = email
         self.fecha = fecha
@@ -27,6 +28,7 @@ class Reserva(db.Model):
         self.horario = horario
         self.confirmada = False
         self.fecha_creacion = datetime.now(timezone.utc)
+        self.tipo = tipo
 
     def validar(self):
         """Valida que los campos obligatorios no estén vacíos."""
@@ -43,7 +45,8 @@ class Reserva(db.Model):
             fecha=datos.get('fecha'),
             celular=datos.get('celular'),
             pasante_id=datos.get('pasante_id'),
-            horario=datos.get('horario')
+            horario=datos.get('horario'),
+            tipo=datos.get('tipo')
         )
 
     @staticmethod
