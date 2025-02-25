@@ -25,14 +25,46 @@
             margin-top: 2rem;
         }
         .doctor-card {
-            text-align: center;
-            padding: 1rem;
-            border: 1px solid #ddd;
+            position: relative;
+            overflow: hidden;
             border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 2px solid #ee005b;
+            padding: 20px;
+            background-color: white;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
         }
-        .doctor-card img {
+        .doctor-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
             border-radius: 50%;
-            max-width: 100px;
+            margin-right: 20px;
+        }
+        .doctor-info {
+            flex: 1;
+            padding-left: 20px;
+            border-left: 2px solid #ee005b;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .doctor-info h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ee005b;
+            margin-bottom: 10px;
+        }
+        .doctor-info p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #666;
         }
         .social-icons a {
             margin: 0 0.5rem;
@@ -131,21 +163,6 @@
         .carousel-button.next {
             right: 0;
         }
-        .doctor-image {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin: 0 auto 1rem;
-            display: block;
-        }
-        .doctor-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
         .button.primary {
             background-color: #0088cc;
             color: white;
@@ -153,6 +170,53 @@
             padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
+        }
+        /* Estilos para el modal que se muestra al hacer clic */
+        #doctorModal .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border: 2px solid #ee005b; /* Bordes rojos */
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+        }
+        #doctorModal img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 20px;
+        }
+        #doctorModal .info {
+            flex: 1;
+            padding-left: 20px;
+            border-left: 2px solid #ee005b; /* Línea divisoria vertical */
+            min-height: 120px;
+        }
+        #doctorModal h2 {
+            margin: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ee005b; /* Línea divisoria horizontal */
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #doctorModal p {
+            margin: 0;
+            color: #666;
+        }
+        .close {
+            color: #ee005b;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #d50032;
         }
     </style>
 </head>
@@ -186,8 +250,10 @@
                         <img src="{{ url_for('static', filename='img/doctores/' + doctor.imagen) }}" 
                             alt="{{ doctor.nombre }}"
                             class="doctor-image">
-                        <h3>{{ doctor.nombre }}</h3>
-                        <p>{{ doctor.especialidad }}</p>
+                        <div class="doctor-info">
+                            <h3>{{ doctor.nombre }}</h3>
+                            <p>{{ doctor.especialidad }}</p>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -198,7 +264,7 @@
             <h2>Horarios y Ubicación</h2>
             <div id="horarios-disponibles"></div>
             <p><strong>Dirección:</strong> Av. Siempre Viva 123, Quito, Ecuador</p>
-            <p><strong>Horarios:</strong> Lunes a Viernes de 8:00 AM a 6:00 PM</p>
+            <p><strong>Horarios:</strong> Lunes a Viernes de 7:00 AM a 3:30 PM</p>
             <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1270.123456789!2d-78.450448!3d-0.1595626!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d591780a036cc3%3A0xd96ad4b7f92bae71!2sUDLA+Arena!5e0!3m2!1ses!2sec!4v1234567890"
                 width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
@@ -213,9 +279,9 @@
         <!-- Redes Sociales -->
         <section class="social-icons">
             <h2>Síguenos en Redes Sociales</h2>
-            <a href="#" target="_blank">Facebook</a>
-            <a href="#" target="_blank">Instagram</a>
-            <a href="#" target="_blank">Twitter</a>
+            <a href="https://www.instagram.com/carf_udla?igsh=MWlhM2kzcTRjeWF2Nw==" target="_blank">
+                <img src="{{ url_for('static', filename='img/iconos/icono-instagram.png') }}" alt="Instagram" class="social-icon">
+            </a>
         </section>
     </main>
 
@@ -233,6 +299,18 @@
                 <input type="date" id="fecha" min="{{ today }}" onchange="actualizarHorarios()">
             </div>
             <div id="listaHorarios" class="horarios-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar información del doctor -->
+    <div id="doctorModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img id="doctorImagen" src="" alt="Doctor">
+            <div class="info">
+                <h2 id="doctorNombre"></h2>
+                <p id="doctorEspecialidad"></p>
+            </div>
         </div>
     </div>
 
@@ -366,6 +444,31 @@
     // Cerrar el modal si se hace clic fuera de él
     window.onclick = function(event) {
         const modal = document.getElementById('horariosModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    document.querySelectorAll('.doctor-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const nombre = this.querySelector('h3').innerText;
+            const especialidad = this.querySelector('p').innerText;
+            const imagenSrc = this.querySelector('img').src;
+
+            document.getElementById('doctorNombre').innerText = nombre;
+            document.getElementById('doctorEspecialidad').innerText = especialidad;
+            document.getElementById('doctorImagen').src = imagenSrc;
+
+            document.getElementById('doctorModal').style.display = 'block';
+        });
+    });
+
+    document.querySelector('.close').onclick = function() {
+        document.getElementById('doctorModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('doctorModal');
         if (event.target == modal) {
             modal.style.display = 'none';
         }

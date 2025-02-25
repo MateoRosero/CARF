@@ -8,6 +8,8 @@ import qrcode
 import io
 import secrets
 import socket
+from utils.decorators import login_required, admin_required
+from controllers.auth_controller import AuthController
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -40,6 +42,9 @@ def insertar_doctores_iniciales():
                 Doctor(nombre="FT. Andrés Logroño", especialidad="Master en terapia manual y manejo del dolor", imagen="Andres Logrono.jpg"),
                 Doctor(nombre="FT. Anthony Brito", especialidad="Coordinador CARF, Master en terapia Manual Ortopédica", imagen="Anthony Brito.jpg"),
                 Doctor(nombre="FT. Andrés Arcos", especialidad="Coordinador académico de fisioterapia, Maestría en Salud y Seguridad Ocupacional", imagen="Andres Arcos.jpg"),
+                Doctor(nombre="FT. Sara Piarpuzan", especialidad="Máster en terapia manual", imagen="Sara Piarpuezan.jpg"),
+                Doctor(nombre="FT. Xavier Silva", especialidad="Máster en terapia manual", imagen="Xavier Silva.jpg"),
+
             ]
             
             for doctor in doctores:
@@ -240,22 +245,18 @@ def generar_qr():
     token = secrets.token_urlsafe(16)
     tokens[token] = datetime.now() + timedelta(seconds=30)
 
-    # URL del formulario sin modificar su estructura
     url_formulario = f"https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u&token={token}"
 
-    # Generar QR
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_formulario)
     qr.make(fit=True)
-    
+
     img = qr.make_image(fill='black', back_color='white')
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-    
+
     return send_file(buf, mimetype='image/png')
-
-
 
 @app.route('/validar_qr')
 def validar_qr():
@@ -267,6 +268,16 @@ def validar_qr():
         return redirect("https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u")
     else:
         return "QR inválido o expirado", 403
+
+@app.route('/get_horarios_ocupados')
+def get_horarios_ocupados():
+    return ReservaController.get_horarios_ocupados()
+
+@app.route('/admin/actualizar-info-reserva/<int:reserva_id>', methods=['POST'])
+@login_required
+@admin_required
+def actualizar_info_reserva(reserva_id):
+    return ReservaController.actualizar_info_administrativa(reserva_id)
 
 app.register_blueprint(admin_bp, url_prefix='/admin')  # Asegúrate de que esto esté presente
 

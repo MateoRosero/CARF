@@ -1,14 +1,27 @@
-body {
-    background-color: #ffffff; /* Blanco */
-    color: #000000; /* Negro */
-    font-family: Arial, sans-serif;
+/* Importación de fuente personalizada */
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap");
+
+/* Configuración global */
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+/* Estilos generales del cuerpo */
+body {
+    min-height: 100vh;
+    background: #ffffff;
+    font-family: "Ubuntu Mono", monospace;
+    font-weight: 400;
+    color: #000000;
 }
 
 header {
-    background-color:rgb(199, 0, 70); /* Rojo vino tinto */
-    color: #ffffff; /* Blanco */
+    background-color: rgb(199, 0, 70);
+    /* Rojo vino tinto */
+    color: #ffffff;
+    /* Blanco */
     padding: 20px;
     text-align: center;
 }
@@ -27,14 +40,19 @@ section {
 }
 
 footer {
-    background-color: rgb(199, 0, 70); /* Rojo vino tinto */
-    color: #ffffff; /* Blanco */
+    background-color: rgb(199, 0, 70);
+    /* Rojo vino tinto */
+    color: #ffffff;
+    /* Blanco */
     text-align: center;
-    padding: 2px; /* Reduce el padding */
-    position: relative; /* Cambia de fixed a relative */
+    padding: 2px;
+    /* Reduce el padding */
+    position: relative;
+    /* Cambia de fixed a relative */
     width: 100%;
     bottom: 0;
-    height: auto; /* Asegúrate de que no haya una altura fija */
+    height: auto;
+    /* Asegúrate de que no haya una altura fija */
 }
 
 .grid {
@@ -42,23 +60,38 @@ footer {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
     padding: 20px;
+    position: relative;
 }
 
+/* Estilos para los doctores de nivel superior */
+.doctor-card[data-doctor="FT. Anthony Brito"],
+.doctor-card[data-doctor="FT. Andrés Arcos"] {
+    transform: translateY(-30px);
+    border: 2px solid #ee005b;
+    position: relative;
+    z-index: 2;
+}
+
+/* Contenedor del doctor */
 .doctor-card {
-    background: white;
+    position: relative;
+    overflow: hidden;
     border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
 }
 
+/* Imagen del doctor */
 .doctor-image {
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
+    width: 100%;
+    height: auto;
     object-fit: cover;
-    margin: 0 auto 1rem;
-    display: block;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Información del doctor */
+.doctor-info {
+    display: block; /* Cambiar de none a block */
 }
 
 .horario-slot {
@@ -80,27 +113,102 @@ footer {
     cursor: pointer;
 }
 
+
+/* Contenedor del carrusel */
 .carousel-container {
-    position: relative;
     width: 100%;
-    max-width: 1200px; /* Limitar el ancho máximo */
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px 20px;
+    background: #ffffff;
+    border-radius: 10px;
     overflow: hidden;
+    position: relative;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+/* Pista del carrusel (para el desplazamiento) */
 .carousel-track {
     display: flex;
+    gap: 20px;
     transition: transform 0.5s ease-in-out;
+    padding: 10px;
 }
 
 .carousel-item {
-    flex: 0 0 33.333%; /* Muestra 3 items */
-    min-width: 33.333%;
-    padding: 0 15px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    cursor: pointer;
+    flex: 0 0 calc(100% / 3);
+    min-width: calc(100% / 3);
+    padding: 20px;
     box-sizing: border-box;
+    height: 400px;
 }
 
+.doctor-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.doctor-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    font-size: 1.2em;
+}
+
+.carousel-item:hover .doctor-image {
+    opacity: 0.2;
+}
+
+.carousel-item:hover .doctor-info {
+    opacity: 1;
+}
+
+/* Contenedor de la información */
+.content {
+    font-size: 1.2rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 15px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    border-radius: 0 0 10px 10px;
+}
+
+.carousel-item:hover .content {
+    opacity: 1;
+}
+
+.content span {
+    display: block;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+/* Botones de navegación */
 .carousel-button {
     position: absolute;
     top: 50%;
@@ -112,11 +220,13 @@ footer {
     height: 40px;
     border-radius: 50%;
     cursor: pointer;
-    z-index: 100;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    transition: background 0.3s ease-in-out;
 }
 
 .carousel-button.prev {
@@ -127,10 +237,21 @@ footer {
     right: 10px;
 }
 
-.reserva-form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+.carousel-button:hover {
+    background: rgb(199, 0, 70);
+}
+
+/* Responsividad para dispositivos móviles */
+@media (max-width: 768px) {
+    .carousel-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .carousel-item {
+        flex: 0 0 90%;
+        min-width: 90%;
+    }
 }
 
 .doctor-selection {
@@ -216,7 +337,8 @@ label {
     margin-bottom: 5px;
 }
 
-select, input {
+select,
+input {
     width: 100%;
     padding: 8px;
     margin-top: 5px;
@@ -333,7 +455,8 @@ button:hover {
     margin-top: 20px;
 }
 
-.pasantes-table th, .pasantes-table td {
+.pasantes-table th,
+.pasantes-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
@@ -362,11 +485,13 @@ button:hover {
     margin-top: 20px;
 }
 
-.reservas-table th, .reservas-table td {
+.reservas-table th,
+.reservas-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: center;
-    height: 50px; /* Ajusta el tamaño según sea necesario */
+    height: 50px;
+    /* Ajusta el tamaño según sea necesario */
     vertical-align: middle;
 }
 
@@ -395,9 +520,53 @@ button:hover {
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
-    margin-left: 10px; /* Espacio entre el título y el botón */
+    margin-left: 10px;
+    /* Espacio entre el título y el botón */
 }
 
 .button:hover {
     background-color: #005f73;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+}
+
+.modal-content img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin-right: 20px;
+    object-fit: cover;
+}
+
+.modal-content .info {
+    text-align: left;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
 }

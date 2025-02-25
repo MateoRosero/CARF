@@ -60,3 +60,25 @@ class Reserva(db.Model):
             Reserva.fecha == fecha,
             Reserva.confirmada == True
         ).all()
+
+    @staticmethod
+    def get_horarios_ocupados_con_duracion(pasante_id, fecha):
+        """Obtiene los horarios ocupados incluyendo la duración de cada cita"""
+        reservas = Reserva.query.filter(
+            Reserva.pasante_id == pasante_id,
+            Reserva.fecha == fecha
+        ).all()
+        
+        horarios_bloqueados = []
+        for reserva in reservas:
+            hora_inicio = reserva.horario.split(' - ')[0]
+            hora, minuto = map(int, hora_inicio.split(':'))
+            duracion = 90 if reserva.tipo == 'evaluacion' else 60
+            
+            # Agregar todos los slots de 30 minutos dentro de la duración
+            for i in range(0, duracion, 30):
+                minutos_totales = hora * 60 + minuto + i
+                hora_bloqueada = f"{minutos_totales // 60:02d}:{minutos_totales % 60:02d}"
+                horarios_bloqueados.append(hora_bloqueada)
+            
+        return horarios_bloqueados

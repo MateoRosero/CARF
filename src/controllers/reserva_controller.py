@@ -1,8 +1,9 @@
-from flask import render_template, request, flash, redirect, url_for
+from flask import render_template, request, flash, redirect, url_for, jsonify, session
 from models.reserva import Reserva
 from models.pasante import Pasante
 from database import db
 from datetime import datetime, timedelta, timezone
+from flask_login import current_user
 
 class ReservaController:
     @staticmethod
@@ -22,6 +23,34 @@ class ReservaController:
             pasante_id=request.args.get('pasante_id', ''),
             tipo=request.args.get('tipo', '')
         )
+
+    @staticmethod
+    def verificar_solapamiento(pasante_id, fecha, horario_nuevo, tipo_nuevo):
+        # Convertir horario nuevo a minutos
+        hora, minuto = map(int, horario_nuevo.split(':'))
+        minutos_inicio = hora * 60 + minuto
+        duracion = 90 if tipo_nuevo == 'evaluacion' else 60
+        minutos_fin = minutos_inicio + duracion
+        
+        # Obtener reservas existentes del pasante en esa fecha
+        reservas = Reserva.query.filter(
+            Reserva.pasante_id == pasante_id,
+            Reserva.fecha == fecha
+        ).all()
+        
+        for reserva in reservas:
+            hora_inicio = reserva.horario.split(' - ')[0]
+            h, m = map(int, hora_inicio.split(':'))
+            mins_inicio_existente = h * 60 + m
+            duracion_existente = 90 if reserva.tipo == 'evaluacion' else 60
+            mins_fin_existente = mins_inicio_existente + duracion_existente
+            
+            # Verificar solapamiento
+            if (minutos_inicio < mins_fin_existente and 
+                minutos_fin > mins_inicio_existente):
+                return False
+            
+        return True
 
     @staticmethod
     def procesar_reserva():
@@ -51,7 +80,17 @@ class ReservaController:
             horario_fin = ReservaController.calcular_horario_fin(horario, tipo)
             horario_completo = f"{horario} - {horario_fin}"
 
-            # 4. Crear la nueva reserva (no la guarda en la BD todavía)
+            # 4. Verificar solapamiento antes de crear la reserva
+            if not ReservaController.verificar_solapamiento(
+                int(pasante_id),
+                fecha,
+                horario,
+                tipo
+            ):
+                flash('No se puede reservar en este horario porque el pasante tiene otra cita que se solapa')
+                return redirect(url_for('mostrar_formulario'))
+
+            # 5. Crear la nueva reserva (no la guarda en la BD todavía)
             nueva_reserva = Reserva(
                 nombre=nombre,
                 email=email,
@@ -61,12 +100,6 @@ class ReservaController:
                 horario=horario_completo,
                 tipo=tipo
             )
-
-            # 5. Verificar disponibilidad
-            horarios_ocupados = Reserva.get_horarios_ocupados_pasante(pasante.id, fecha)
-            if nueva_reserva.horario in [h[0] for h in horarios_ocupados]:
-                flash('El horario seleccionado ya no está disponible para este pasante')
-                return redirect(url_for('mostrar_formulario'))
 
             # 6. Guardar la reserva
             db.session.add(nueva_reserva)
@@ -163,3 +196,38 @@ class ReservaController:
         hora += minuto // 60
         minuto = minuto % 60
         return f"{hora:02}:{minuto:02}"
+
+    @staticmethod
+    def get_horarios_ocupados():
+        pasante_id = request.args.get('pasante_id')
+        fecha = request.args.get('fecha')
+        if pasante_id and fecha:
+            fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date()
+            horarios = Reserva.get_horarios_ocupados_con_duracion(int(pasante_id), fecha_obj)
+            return jsonify(horarios)
+        return jsonify([])
+
+    @staticmethod
+    def actualizar_info_administrativa(reserva_id):
+        """Actualiza la información administrativa de una reserva"""
+        if not session.get('is_admin'):  # Verificar si es admin usando session
+            flash('No tienes permisos para realizar esta acción')
+            return redirect(url_for('admin_reservas'))
+        
+        try:
+            reserva = Reserva.query.get_or_404(reserva_id)
+            
+            # Actualizar la información
+            reserva.tipo_atencion = request.form.get('tipo_atencion')
+            reserva.cobro = request.form.get('cobro') == 'true'
+            reserva.genero = request.form.get('genero')
+            reserva.es_externo = request.form.get('es_externo') == 'true'
+            
+            db.session.commit()
+            flash('Información actualizada correctamente')
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar la información: {str(e)}')
+        
+        return redirect(url_for('admin_reservas'))

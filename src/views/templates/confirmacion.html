@@ -18,7 +18,20 @@
             <p><strong>Correo Electrónico:</strong> {{ email }}</p>
             <p><strong>Fecha:</strong> {{ fecha }}</p>
             <p><strong>Pasante:</strong> {{ pasante.nombre }}</p>
-            <p><strong>Horario:</strong> {{ horario }}</p>
+            <p><strong>Tipo de Reserva:</strong> 
+                {% if tipo == 'evaluacion' %}
+                    Evaluación
+                {% else %}
+                    Seguimiento
+                {% endif %}
+            </p>
+            <p><strong>Duración:</strong> 
+                {% if tipo == 'evaluacion' %}
+                    Su cita tiene una duración de una hora y treinta minutos
+                {% else %}
+                    Su cita tiene una duración de una hora
+                {% endif %}
+            </p>
             <p><strong>Celular:</strong> {{ celular }}</p>
             <div style="display: flex; justify-content: space-between; gap: 10px;">
                 <form action="/confirmar" method="POST">

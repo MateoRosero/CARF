@@ -38,3 +38,26 @@ def ver_reservas():
         return redirect(url_for('login'))  # Redirigir si no está autenticado
     reservas = Reserva.query.all()  # Obtener todas las reservas
     return render_template('reservas.html', reservas=reservas)  # Renderizar la nueva plantilla
+
+@admin_bp.route('/admin/editar_pasante', methods=['POST'])
+def editar_pasante():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    pasante_id = request.form['id']
+    pasante = Pasante.query.get(pasante_id)
+    
+    if pasante:
+        pasante.nombre = request.form['nombre']
+        pasante.cedula = request.form['cedula']
+        pasante.correo = request.form['correo']
+        pasante.id_banner = request.form['id_banner']
+        
+        try:
+            db.session.commit()
+            return redirect(url_for('admin.index'))
+        except Exception as e:
+            db.session.rollback()
+            return "Error al actualizar el pasante", 500
+            
+    return "Pasante no encontrado", 404

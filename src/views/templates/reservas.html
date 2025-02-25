@@ -4,32 +4,91 @@
     <meta charset="UTF-8">
     <title>Reservas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         /* Estilos para el modal */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1;
+            z-index: 1000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            padding-top: 60px;
+            background-color: rgba(0,0,0,0.5);
         }
 
         .modal-content {
             background-color: #fefefe;
             margin: 5% auto;
             padding: 20px;
-            border: 2px solid #007399;
+            border-radius: 10px;
             width: 80%;
-            max-width: 400px;
+            max-width: 900px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .reserva-container {
+            display: flex;
+            gap: 30px;
+        }
+
+        .info-paciente, .form-admin {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .info-paciente {
+            background-color: #f8f9fa;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            text-align: left;
+        }
+
+        .info-item {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-item i {
+            color: #0099cc;
+            width: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .btn-guardar {
+            background-color: #0099cc;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-guardar:hover {
+            background-color: #007399;
         }
 
         .close {
@@ -37,22 +96,18 @@
             float: right;
             font-size: 28px;
             font-weight: bold;
-        }
-
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
             cursor: pointer;
         }
 
-        .info-item {
-            margin-bottom: 10px;
+        .close:hover {
+            color: #333;
         }
 
-        .info-item i {
-            margin-right: 8px;
-            color: #007399;
+        h3 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0099cc;
         }
     </style>
 </head>
@@ -88,10 +143,10 @@
                     <td>
                         {% for reserva in reservas %}
                         {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
-                                <button class="reserva-btn" onclick="mostrarInfo('{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{ reserva.horario}}')">
-                                    {{ reserva.pasante.nombre }}
-                                </button>
-                            {% endif %}
+                            <button class="reserva-btn" onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
+                                {{ reserva.pasante.nombre }}
+                            </button>
+                        {% endif %}
                         {% endfor %}
                     </td>
                     {% endfor %}
@@ -101,38 +156,115 @@
         </table>
     </div>
 
-    <!-- Modal -->
+    <!-- Modal para el administrador -->
     <div id="infoModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="cerrarModal()">&times;</span>
-            <div id="infoTexto"></div>
+            <div class="reserva-container">
+                <!-- Columna izquierda: Información del paciente -->
+                <div class="info-paciente">
+                    <h3>Detalles de la Reserva</h3>
+                    <div class="info-item">
+                        <i class="fas fa-user"></i>
+                        <span>Cliente: <strong id="nombreCliente"></strong></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>Email: <strong id="emailCliente"></strong></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Fecha: <strong id="fechaReserva"></strong></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-phone"></i>
+                        <span>Celular: <strong id="celularCliente"></strong></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Horario: <strong id="horarioReserva"></strong></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-user-md"></i>
+                        <span>Pasante: <strong id="pasanteNombre"></strong></span>
+                    </div>
+                </div>
+
+                <!-- Columna derecha: Formulario administrativo -->
+                <div class="form-admin">
+                    <h3>Información Administrativa</h3>
+                    <form id="formAdminInfo" action="/admin/actualizar-info-reserva/${reservaId}" method="POST">
+                        <div class="form-group">
+                            <label for="tipo_atencion">Tipo de Atención:</label>
+                            <select name="tipo_atencion" id="tipo_atencion" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Traumatología">Traumatología</option>
+                                <option value="Neurología Pediátrica">Neurología Pediátrica</option>
+                                <option value="Neurología Adultos">Neurología Adultos</option>
+                                <option value="Respiratorio">Respiratorio</option>
+                                <option value="Deportiva - Masajes">Deportiva - Masajes</option>
+                                <option value="Deportiva - Atención">Deportiva - Atención</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cobro">¿Se realizó el cobro?</label>
+                            <select name="cobro" id="cobro" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="true">Sí</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="genero">Género:</label>
+                            <select name="genero" id="genero" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="masculino">Hombre</option>
+                                <option value="femenino">Mujer</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="es_externo">Tipo de Paciente:</label>
+                            <select name="es_externo" id="es_externo" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="true">Externo</option>
+                                <option value="false">Interno</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn-guardar">Guardar Información</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        function mostrarInfo(nombre, email, fecha, celular, tipo, horario) {
-            const infoTexto = `
-                <div class="info-item"><i class="fas fa-user"></i>Cliente: ${nombre}</div>
-                <div class="info-item"><i class="fas fa-envelope"></i>Email: ${email}</div>
-                <div class="info-item"><i class="fas fa-calendar"></i>Fecha: ${fecha}</div>
-                <div class="info-item"><i class="fas fa-phone"></i>Celular: ${celular}</div>
-                <div class="info-item"><i class="fas fa-clock"></i>Tipo de Reserva: ${tipo}</div>   
-                <div class="info-item"><i class="fas fa-clock"></i>Duracion: ${horario}</div>
-            `;
-            document.getElementById('infoTexto').innerHTML = infoTexto;
-            document.getElementById('infoModal').style.display = "block";
-        }
+    function mostrarInfoAdmin(reservaId, nombre, email, fecha, celular, tipo, horario, pasante) {
+        const modal = document.getElementById('infoModal');
+        const nombreCliente = document.getElementById('nombreCliente');
+        const emailCliente = document.getElementById('emailCliente');
+        const fechaReserva = document.getElementById('fechaReserva');
+        const celularCliente = document.getElementById('celularCliente');
+        const horarioReserva = document.getElementById('horarioReserva');
+        const pasanteNombre = document.getElementById('pasanteNombre');
+        
+        // Información básica de la reserva
+        nombreCliente.textContent = nombre;
+        emailCliente.textContent = email;
+        fechaReserva.textContent = fecha;
+        celularCliente.textContent = celular;
+        horarioReserva.textContent = horario;
+        pasanteNombre.textContent = pasante;
+        
+        modal.style.display = "block";
+    }
 
-        function cerrarModal() {
-            document.getElementById('infoModal').style.display = "none";
-        }
-
-        window.onclick = function(event) {
-            const modal = document.getElementById('infoModal');
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
+    function cerrarModal() {
+        document.getElementById('infoModal').style.display = "none";
+    }
     </script>
 </body>
 </html>
