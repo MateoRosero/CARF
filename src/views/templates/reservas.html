@@ -5,6 +5,7 @@
     <title>Reservas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* Estilos para el modal */
         .modal {
@@ -193,7 +194,7 @@
                 <!-- Columna derecha: Formulario administrativo -->
                 <div class="form-admin">
                     <h3>Información Administrativa</h3>
-                    <form id="formAdminInfo" action="/admin/actualizar-info-reserva/${reservaId}" method="POST">
+                    <form id="formulario-actualizar" action="/admin/actualizar-info-reserva/{{ reserva_id }}" method="POST">
                         <div class="form-group">
                             <label for="tipo_atencion">Tipo de Atención:</label>
                             <select name="tipo_atencion" id="tipo_atencion" required>
@@ -265,6 +266,24 @@
     function cerrarModal() {
         document.getElementById('infoModal').style.display = "none";
     }
+
+    $('#formulario-actualizar').on('submit', function(event) {
+        event.preventDefault();
+        console.log("Formulario enviado");
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    // Aquí puedes recargar la información de la reserva
+                } else {
+                    alert(response.message);
+                }
+            }
+        });
+    });
     </script>
 </body>
 </html>

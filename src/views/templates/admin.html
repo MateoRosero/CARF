@@ -31,7 +31,7 @@
         }
 
         .dashboard-container {
-            max-width: 800px;
+            width: 100%;
             margin: 20px auto;
             background-color: white;
             padding: 20px;
@@ -47,19 +47,25 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         th, td {
-            padding: 10px;
+            border: 1px solid #ddd;
+            padding: 8px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
         }
 
         th {
-            background-color: #007399;
-            color: white;
+            background-color: #f2f2f2;
+            color: black;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #ddd;
         }
 
         .form-container {
@@ -154,16 +160,65 @@
             background-color: #005f73;
         }
 
-        .modal form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
 
-        .modal input {
-            padding: 8px;
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+        }
+
+        .modal-content form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-content input {
+            padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            width: calc(100% - 20px);
+        }
+
+        .modal-content button {
+            background-color: #007399;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-content button:hover {
+            background-color: #005f73;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group i {
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -186,6 +241,7 @@
                 <input type="text" name="cedula" placeholder="Cédula" required>
                 <input type="email" name="correo" placeholder="Correo" required>
                 <input type="text" name="id_banner" placeholder="ID Banner" required>
+                <input type="text" name="celular" placeholder="Teléfono" required>
                 <button type="submit">Agregar Pasante</button>
             </form>
         </div>
@@ -201,6 +257,7 @@
                     <th>Nombre</th>
                     <th>Cédula</th>
                     <th>Correo</th>
+                    <th>Teléfono</th>
                     <th>ID Banner</th>
                     <th>Acciones</th>
                 </tr>
@@ -212,11 +269,10 @@
                         <td>{{ pasante.nombre }}</td>
                         <td>{{ pasante.cedula }}</td>
                         <td>{{ pasante.correo }}</td>
+                        <td>{{ pasante.telefono }}</td>
                         <td>{{ pasante.id_banner }}</td>
                         <td>
-                            <button onclick="editarPasante('{{ pasante.id }}', '{{ pasante.nombre }}', '{{ pasante.cedula }}', '{{ pasante.correo }}', '{{ pasante.id_banner }}')" class="edit-btn">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
+                            <button class="editar-btn" data-id="{{ pasante.id }}" data-nombre="{{ pasante.nombre }}" data-cedula="{{ pasante.cedula }}" data-correo="{{ pasante.correo }}" data-telefono="{{ pasante.telefono }}" data-id_banner="{{ pasante.id_banner }}">Editar</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -242,17 +298,33 @@
     </div>
 
     <!-- Modal de Edición -->
-    <div id="editModal" class="modal">
+    <div id="editarModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>Editar Pasante</h2>
-            <form id="editForm" action="{{ url_for('admin.editar_pasante') }}" method="POST">
-                <input type="hidden" id="editId" name="id">
-                <input type="text" id="editNombre" name="nombre" placeholder="Nombre" required>
-                <input type="text" id="editCedula" name="cedula" placeholder="Cédula" required>
-                <input type="email" id="editCorreo" name="correo" placeholder="Correo" required>
-                <input type="text" id="editIdBanner" name="id_banner" placeholder="ID Banner" required>
-                <button type="submit" class="button">Guardar Cambios</button>
+            <form id="editarForm" method="POST" action="{{ url_for('admin.editar_pasante') }}">
+                <input type="hidden" name="id" id="editarId">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="nombre" id="editarNombre" placeholder="Nombre" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-id-card"></i>
+                    <input type="text" name="cedula" id="editarCedula" placeholder="Cédula" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" name="correo" id="editarCorreo" placeholder="Correo" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="text" name="telefono" id="editarTelefono" placeholder="Teléfono" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-id-badge"></i>
+                    <input type="text" name="id_banner" id="editarIdBanner" placeholder="ID Banner" required>
+                </div>
+                <button type="submit">Guardar cambios</button>
             </form>
         </div>
     </div>
@@ -291,25 +363,41 @@
         }
     }
 
-    function editarPasante(id, nombre, cedula, correo, idBanner) {
-        document.getElementById('editId').value = id;
-        document.getElementById('editNombre').value = nombre;
-        document.getElementById('editCedula').value = cedula;
-        document.getElementById('editCorreo').value = correo;
-        document.getElementById('editIdBanner').value = idBanner;
-        document.getElementById('editModal').style.display = 'block';
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('editarModal');
+        const closeBtn = document.querySelector('#editarModal .close');
+        const editarBtns = document.querySelectorAll('.editar-btn');
 
-    // Cerrar modal
-    document.querySelector('#editModal .close').onclick = function() {
-        document.getElementById('editModal').style.display = 'none';
-    }
+        editarBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const nombre = this.getAttribute('data-nombre');
+                const cedula = this.getAttribute('data-cedula');
+                const correo = this.getAttribute('data-correo');
+                const telefono = this.getAttribute('data-telefono');
+                const idBanner = this.getAttribute('data-id_banner');
 
-    window.onclick = function(event) {
-        if (event.target == document.getElementById('editModal')) {
-            document.getElementById('editModal').style.display = 'none';
+                document.getElementById('editarId').value = id;
+                document.getElementById('editarNombre').value = nombre;
+                document.getElementById('editarCedula').value = cedula;
+                document.getElementById('editarCorreo').value = correo;
+                document.getElementById('editarTelefono').value = telefono;
+                document.getElementById('editarIdBanner').value = idBanner;
+
+                modal.style.display = 'block';
+            });
+        });
+
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
         }
-    }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    });
     </script>
 </body>
 </html>

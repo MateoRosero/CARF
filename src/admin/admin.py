@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from models.pasante import Pasante
 from models.doctor import Doctor
 from models.reserva import Reserva
@@ -20,11 +20,19 @@ def agregar_pasante():
     cedula = request.form['cedula']
     correo = request.form['correo']
     id_banner = request.form['id_banner']
+    telefono = request.form['celular']  # Cambiado a 'telefono'
     
-    nuevo_pasante = Pasante(nombre=nombre, cedula=cedula, correo=correo, id_banner=id_banner)
+    nuevo_pasante = Pasante(
+        nombre=nombre,
+        cedula=cedula,
+        correo=correo,
+        id_banner=id_banner,
+        telefono=telefono
+    )
     db.session.add(nuevo_pasante)
     db.session.commit()
     
+    flash('Pasante agregado exitosamente.')
     return redirect(url_for('admin.index'))  # Redirigir al panel de administración
 
 @admin_bp.route('/admin/agregar_doctor', methods=['POST'])
@@ -51,13 +59,16 @@ def editar_pasante():
         pasante.nombre = request.form['nombre']
         pasante.cedula = request.form['cedula']
         pasante.correo = request.form['correo']
+        pasante.telefono = request.form['telefono']
         pasante.id_banner = request.form['id_banner']
         
         try:
             db.session.commit()
+            flash('Pasante actualizado exitosamente.')
             return redirect(url_for('admin.index'))
         except Exception as e:
             db.session.rollback()
             return "Error al actualizar el pasante", 500
             
-    return "Pasante no encontrado", 404
+    flash('Pasante no encontrado.')
+    return redirect(url_for('admin.index'))

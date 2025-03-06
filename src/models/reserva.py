@@ -15,11 +15,15 @@ class Reserva(db.Model):
     confirmada = db.Column(db.Boolean, nullable=False, default=False)
     fecha_creacion = db.Column(db.DateTime(timezone=True), nullable=False)
     tipo = db.Column(db.String(50), nullable=False)  # Nueva columna para el tipo de reserva
+    tipo_atencion = db.Column(db.String(50))
+    cobro_realizado = db.Column(db.Boolean)
+    genero = db.Column(db.String(10))
+    tipo_paciente = db.Column(db.String(50))
     
     # Relación con pasante
     pasante = db.relationship('Pasante', back_populates='reservas')
 
-    def __init__(self, nombre, email, fecha, celular, pasante_id, horario, tipo):
+    def __init__(self, nombre, email, fecha, celular, pasante_id, horario, tipo, tipo_atencion, cobro_realizado, genero, tipo_paciente):
         self.nombre = nombre
         self.email = email
         self.fecha = fecha
@@ -29,6 +33,10 @@ class Reserva(db.Model):
         self.confirmada = False
         self.fecha_creacion = datetime.now(timezone.utc)
         self.tipo = tipo
+        self.tipo_atencion = tipo_atencion
+        self.cobro_realizado = cobro_realizado
+        self.genero = genero
+        self.tipo_paciente = tipo_paciente
 
     def validar(self):
         """Valida que los campos obligatorios no estén vacíos."""
@@ -61,24 +69,30 @@ class Reserva(db.Model):
             Reserva.confirmada == True
         ).all()
 
-    @staticmethod
-    def get_horarios_ocupados_con_duracion(pasante_id, fecha):
-        """Obtiene los horarios ocupados incluyendo la duración de cada cita"""
-        reservas = Reserva.query.filter(
-            Reserva.pasante_id == pasante_id,
-            Reserva.fecha == fecha
-        ).all()
+@staticmethod
+def get_horarios_ocupados_con_duracion(pasante_id, fecha):
+    """Obtiene los horarios ocupados incluyendo la duración de cada cita"""
+    reservas = Reserva.query.filter(
+        Reserva.pasante_id == pasante_id,
+        Reserva.fecha == fecha
+    ).all()
+    
+    horarios_bloqueados = []
+    for reserva in reservas:
+        # Obtener hora inicio
+        hora_inicio = reserva.horario.split(' - ')[0]
+        hora, minuto = map(int, hora_inicio.split(':'))
+        minutos_inicio = hora * 60 + minuto
         
-        horarios_bloqueados = []
-        for reserva in reservas:
-            hora_inicio = reserva.horario.split(' - ')[0]
-            hora, minuto = map(int, hora_inicio.split(':'))
-            duracion = 90 if reserva.tipo == 'evaluacion' else 60
+        # Calcular duración y hora fin
+        duracion = 90 if reserva.tipo == 'evaluacion' else 60
+        minutos_fin = minutos_inicio + duracion
+        
+        # Bloquear todos los horarios en ese rango
+        tiempo_actual = minutos_inicio
+        while tiempo_actual < minutos_fin:
+            hora_bloqueada = f"{tiempo_actual // 60:02d}:{tiempo_actual % 60:02d}"
+            horarios_bloqueados.append(hora_bloqueada)
+            tiempo_actual += 30  # Incrementar en slots de 30 minutos
             
-            # Agregar todos los slots de 30 minutos dentro de la duración
-            for i in range(0, duracion, 30):
-                minutos_totales = hora * 60 + minuto + i
-                hora_bloqueada = f"{minutos_totales // 60:02d}:{minutos_totales % 60:02d}"
-                horarios_bloqueados.append(hora_bloqueada)
-            
-        return horarios_bloqueados
+        return horarios_bloqueados  

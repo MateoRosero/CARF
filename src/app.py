@@ -10,6 +10,8 @@ import secrets
 import socket
 from utils.decorators import login_required, admin_required
 from controllers.auth_controller import AuthController
+from utils.enviar_sms import enviar_sms
+
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -141,7 +143,7 @@ def reservar():
         nombre = request.form['nombre']
         email = request.form['email']
         celular = request.form['celular']
-        fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
+        fecha = request.form['fecha']
         pasante_id = int(request.form['pasante_id'])
         horario = request.form['horario']
 
@@ -170,6 +172,24 @@ def reservar():
 
         db.session.add(nueva_reserva)
         db.session.commit()
+
+        # Obtener el número del pasante
+        pasante = Pasante.query.get(pasante_id)
+        pasante_numero = pasante.telefono
+
+        # Enviar SMS de confirmación
+        mensaje_cliente = (
+            f"Hola {nombre}, tu cita está confirmada para el {fecha} a las {horario}. "
+            "La ubicación es: Terrazas del Moral, Antiguo Camino a Nayón N44B, Quito 170124 "
+            f"con el pasante: {pasante.nombre}."
+        )
+        mensaje_pasante = (
+            f"Hola {pasante.nombre}, tienes una cita programada para el {fecha} a las {horario} "
+            f"con el cliente {nombre}."
+        )
+
+        enviar_sms(celular, mensaje_cliente)
+        enviar_sms(pasante_numero, mensaje_pasante)
 
         flash("Reserva creada correctamente. A la espera de confirmación.")
         return redirect(url_for('index'))
@@ -274,10 +294,72 @@ def get_horarios_ocupados():
     return ReservaController.get_horarios_ocupados()
 
 @app.route('/admin/actualizar-info-reserva/<int:reserva_id>', methods=['POST'])
-@login_required
-@admin_required
 def actualizar_info_reserva(reserva_id):
-    return ReservaController.actualizar_info_administrativa(reserva_id)
+    try:
+        reserva = Reserva.query.get(reserva_id)
+        if not reserva:
+            flash("Reserva no encontrada.")
+            return jsonify({'success': False, 'message': 'Reserva no encontrada'})
+
+        # Obtener datos del formulario
+        tipo_atencion = request.form.get('tipo_atencion')
+        cobro_realizado = request.form.get('cobro') == 'true'
+        genero = request.form.get('genero')
+        tipo_paciente = request.form.get('es_externo') == 'true'
+
+        # Actualizar los campos de la reserva
+        reserva.tipo_atencion = tipo_atencion
+        reserva.cobro_realizado = cobro_realizado
+        reserva.genero = genero
+        reserva.tipo_paciente = tipo_paciente
+
+        # Guardar cambios en la base de datos
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Información actualizada correctamente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error al actualizar: {str(e)}'})
+
+@app.route('/enviar_sms', methods=['POST'])
+def enviar_sms_endpoint():
+    numero = request.form.get('numero')
+    mensaje = request.form.get('mensaje')
+    resultado = enviar_sms(numero, mensaje)
+    return jsonify({'resultado': resultado})
+
+@app.route('/reservar_sms', methods=['POST'])
+def reservar_sms():
+    data = request.get_json()
+    
+    cliente_numero = data.get('cliente_numero')
+    pasante_numero = data.get('pasante_numero')
+    fecha = data.get('fecha')
+    hora = data.get('hora')
+    nombre_cliente = data.get('nombre_cliente')
+    nombre_pasante = data.get('nombre_pasante')
+    
+    # Mensaje de confirmación
+    # Enviar SMS de confirmación
+    mensaje_cliente = (
+            f"Hola {nombre_cliente}, tu cita está confirmada para el {fecha} a las {hora}. "
+            "La ubicación es: Terrazas del Moral, Antiguo Camino a Nayón N44B, Quito 170124 en el CARF "
+            f"Con el pasante {nombre_pasante}."
+        )
+    mensaje_pasante = (
+            f"Hola {nombre_pasante}, tienes una cita programada para el {fecha} a las {hora} "
+            f"Con el cliente {nombre_cliente}."
+        )
+
+    # Enviar SMS al cliente
+    resultado_cliente = enviar_sms(cliente_numero, mensaje_cliente)
+    
+    # Enviar SMS al pasante
+    resultado_pasante = enviar_sms(pasante_numero, mensaje_pasante)
+    
+    return jsonify({
+        'resultado_cliente': resultado_cliente,
+        'resultado_pasante': resultado_pasante
+    })
 
 app.register_blueprint(admin_bp, url_prefix='/admin')  # Asegúrate de que esto esté presente
 
