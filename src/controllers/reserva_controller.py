@@ -8,20 +8,19 @@ from flask_login import current_user
 class ReservaController:
     @staticmethod
     def mostrar_formulario():
-        """
-        Muestra el formulario de reserva, con la lista de pasantes disponibles.
-        """
-        pasantes = Pasante.query.all()
-
+        fecha = request.form.get('fecha')  # Cambia a request.form si usas POST
+        print("Fecha recibida:", fecha)  # Verifica que la fecha se recibe correctamente
+        
+        pasantes_disponibles = ReservaController.filtrar_pasantes_por_fecha(fecha)
         return render_template(
-            'reservar.html',
-            pasantes=pasantes,
-            nombre=request.args.get('nombre', ''),
-            email=request.args.get('email', ''),
-            fecha=request.args.get('fecha', ''),
-            celular=request.args.get('celular', ''),
-            pasante_id=request.args.get('pasante_id', ''),
-            tipo=request.args.get('tipo', '')
+        'reservar.html',
+        pasantes=pasantes_disponibles,
+        nombre=request.args.get('nombre', ''),
+        email=request.args.get('email', ''),
+        fecha=fecha,
+        celular=request.args.get('celular', ''),
+        pasante_id=request.args.get('pasante_id', ''),
+        tipo=request.args.get('tipo', '')
         )
 
     @staticmethod
@@ -231,3 +230,17 @@ class ReservaController:
             flash(f'Error al actualizar la información: {str(e)}')
         
         return redirect(url_for('admin_reservas'))
+
+    @staticmethod
+    def filtrar_pasantes_por_fecha(fecha):
+        if fecha:
+            fecha_seleccionada = datetime.strptime(fecha, '%Y-%m-%d').date()
+            pasantes_disponibles = Pasante.query.filter(
+                Pasante.rango_trabajo_inicio <= fecha_seleccionada,
+                Pasante.rango_trabajo_fin >= fecha_seleccionada
+            ).all()
+            print("Pasantes disponibles:", pasantes_disponibles)
+            return pasantes_disponibles
+        else:
+            print("No se recibió una fecha válida.")
+            return []

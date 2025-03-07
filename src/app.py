@@ -10,7 +10,7 @@ import secrets
 import socket
 from utils.decorators import login_required, admin_required
 from controllers.auth_controller import AuthController
-from utils.enviar_sms import enviar_sms
+#from utils.enviar_sms import enviar_sms
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
@@ -188,8 +188,8 @@ def reservar():
             f"con el cliente {nombre}."
         )
 
-        enviar_sms(celular, mensaje_cliente)
-        enviar_sms(pasante_numero, mensaje_pasante)
+        #enviar_sms(celular, mensaje_cliente)
+        #enviar_sms(pasante_numero, mensaje_pasante)
 
         flash("Reserva creada correctamente. A la espera de confirmación.")
         return redirect(url_for('index'))
@@ -320,16 +320,16 @@ def actualizar_info_reserva(reserva_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error al actualizar: {str(e)}'})
 
-@app.route('/enviar_sms', methods=['POST'])
-def enviar_sms_endpoint():
-    numero = request.form.get('numero')
-    mensaje = request.form.get('mensaje')
-    resultado = enviar_sms(numero, mensaje)
-    return jsonify({'resultado': resultado})
+#@app.route('/enviar_sms', methods=['POST'])
+#def enviar_sms_endpoint():
+#    numero = request.form.get('numero')
+#    mensaje = request.form.get('mensaje')
+#    resultado = enviar_sms(numero, mensaje)
+#    return jsonify({'resultado': resultado})
 
-@app.route('/reservar_sms', methods=['POST'])
-def reservar_sms():
-    data = request.get_json()
+#@app.route('/reservar_sms', methods=['POST'])
+#def reservar_sms():
+#    data = request.get_json()
     
     cliente_numero = data.get('cliente_numero')
     pasante_numero = data.get('pasante_numero')
@@ -351,15 +351,15 @@ def reservar_sms():
         )
 
     # Enviar SMS al cliente
-    resultado_cliente = enviar_sms(cliente_numero, mensaje_cliente)
+    #resultado_cliente = enviar_sms(cliente_numero, mensaje_cliente)
     
     # Enviar SMS al pasante
-    resultado_pasante = enviar_sms(pasante_numero, mensaje_pasante)
+    #resultado_pasante = enviar_sms(pasante_numero, mensaje_pasante)
     
-    return jsonify({
-        'resultado_cliente': resultado_cliente,
-        'resultado_pasante': resultado_pasante
-    })
+#    return jsonify({
+#        'resultado_cliente': resultado_cliente,
+#        'resultado_pasante': resultado_pasante
+#    })
 
 app.register_blueprint(admin_bp, url_prefix='/admin')  # Asegúrate de que esto esté presente
 

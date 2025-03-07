@@ -79,13 +79,10 @@
             box-sizing: border-box;
         }
 
-        .form-container button {
-            background-color: #007399;
-            color: white;
+        .form-container button,
+        .dashboard-container button {
+            width: auto;
             padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
         }
 
         .form-container button:hover {
@@ -162,63 +159,113 @@
 
         .modal {
             display: none;
+            justify-content: center;
+            align-items: center;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
             z-index: 1000;
+            overflow-y: auto;
         }
 
         .modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
+            max-width: 600px;
             width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            position: relative;
+            margin: 20px auto;
         }
 
         .modal-content h2 {
             margin-bottom: 20px;
-        }
-
-        .modal-content form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .modal-content input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: calc(100% - 20px);
-        }
-
-        .modal-content button {
-            background-color: #007399;
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .modal-content button:hover {
-            background-color: #005f73;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
         }
 
         .input-group {
             display: flex;
             align-items: center;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
         }
 
         .input-group i {
             margin-right: 10px;
+            color: #007399;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+            background-color: transparent;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #eliminarBtn {
+            background-color: #d9534f;
+            color: white;
+        }
+
+        #eliminarBtn:hover {
+            background-color: #c9302c;
+        }
+
+        button[type="submit"] {
+            background-color: #5bc0de;
+            color: white;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #31b0d5;
+        }
+
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        #buscarPasante {
+            width: 50%;
+            padding: 10px;
+            margin-bottom: 5px;
+            border: 1px solid #030303;
+            border-radius: 8px;
+        }
+
+        h2 {
+            margin-top: 40px;
         }
     </style>
 </head>
@@ -242,6 +289,8 @@
                 <input type="email" name="correo" placeholder="Correo" required>
                 <input type="text" name="id_banner" placeholder="ID Banner" required>
                 <input type="text" name="celular" placeholder="Teléfono" required>
+                <input type="date" name="rango_trabajo_inicio" placeholder="Inicio del Rango" required>
+                <input type="date" name="rango_trabajo_fin" placeholder="Fin del Rango" required>
                 <button type="submit">Agregar Pasante</button>
             </form>
         </div>
@@ -251,6 +300,10 @@
         </div>
 
         <h2>Lista de Pasantes Registrados</h2>
+        <!-- Campo de búsqueda -->
+        <input type="text" id="buscarPasante" placeholder="Buscar pasante por nombre" onkeyup="filtrarPasantes()">
+
+        
         <table class="pasantes-table">
             <thead>
                 <tr>
@@ -259,6 +312,7 @@
                     <th>Correo</th>
                     <th>Teléfono</th>
                     <th>ID Banner</th>
+                    <th>Rango de Trabajo</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -271,8 +325,9 @@
                         <td>{{ pasante.correo }}</td>
                         <td>{{ pasante.telefono }}</td>
                         <td>{{ pasante.id_banner }}</td>
+                        <td>{{ pasante.rango_trabajo_inicio }} - {{ pasante.rango_trabajo_fin }}</td>
                         <td>
-                            <button class="editar-btn" data-id="{{ pasante.id }}" data-nombre="{{ pasante.nombre }}" data-cedula="{{ pasante.cedula }}" data-correo="{{ pasante.correo }}" data-telefono="{{ pasante.telefono }}" data-id_banner="{{ pasante.id_banner }}">Editar</button>
+                            <button class="editar-btn" data-id="{{ pasante.id }}" data-nombre="{{ pasante.nombre }}" data-cedula="{{ pasante.cedula }}" data-correo="{{ pasante.correo }}" data-telefono="{{ pasante.telefono }}" data-id_banner="{{ pasante.id_banner }}" data-rango_inicio="{{ pasante.rango_trabajo_inicio }}" data-rango_fin="{{ pasante.rango_trabajo_fin }}">Editar</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -301,7 +356,7 @@
     <div id="editarModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Editar Pasante</h2>
+            <h2 style="text-align: center; margin-bottom: 20px;">Editar Pasante</h2>
             <form id="editarForm" method="POST" action="{{ url_for('admin.editar_pasante') }}">
                 <input type="hidden" name="id" id="editarId">
                 <div class="input-group">
@@ -324,7 +379,18 @@
                     <i class="fas fa-id-badge"></i>
                     <input type="text" name="id_banner" id="editarIdBanner" placeholder="ID Banner" required>
                 </div>
-                <button type="submit">Guardar cambios</button>
+                <div class="input-group">
+                    <i class="fas fa-calendar-alt"></i>
+                    <input type="date" name="rango_trabajo_inicio" id="editarRangoInicio" placeholder="Inicio del Rango" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-calendar-alt"></i>
+                    <input type="date" name="rango_trabajo_fin" id="editarRangoFin" placeholder="Fin del Rango" required>
+                </div>
+                <div class="button-group">
+                    <button id="eliminarBtn" type="button">Eliminar Pasante</button>
+                    <button type="submit">Guardar cambios</button>
+                </div>
             </form>
         </div>
     </div>
@@ -367,6 +433,7 @@
         const modal = document.getElementById('editarModal');
         const closeBtn = document.querySelector('#editarModal .close');
         const editarBtns = document.querySelectorAll('.editar-btn');
+        const eliminarBtn = document.getElementById('eliminarBtn');
 
         editarBtns.forEach(btn => {
             btn.addEventListener('click', function() {
@@ -376,6 +443,8 @@
                 const correo = this.getAttribute('data-correo');
                 const telefono = this.getAttribute('data-telefono');
                 const idBanner = this.getAttribute('data-id_banner');
+                const rangoInicio = this.getAttribute('data-rango_inicio');
+                const rangoFin = this.getAttribute('data-rango_fin');
 
                 document.getElementById('editarId').value = id;
                 document.getElementById('editarNombre').value = nombre;
@@ -383,6 +452,8 @@
                 document.getElementById('editarCorreo').value = correo;
                 document.getElementById('editarTelefono').value = telefono;
                 document.getElementById('editarIdBanner').value = idBanner;
+                document.getElementById('editarRangoInicio').value = rangoInicio;
+                document.getElementById('editarRangoFin').value = rangoFin;
 
                 modal.style.display = 'block';
             });
@@ -397,7 +468,43 @@
                 modal.style.display = 'none';
             }
         }
+
+        eliminarBtn.onclick = function() {
+            if (confirm('¿Estás seguro de que deseas eliminar este pasante?')) {
+                const id = document.getElementById('editarId').value;
+                fetch(`{{ url_for('admin.eliminar_pasante') }}?id=${id}`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Pasante eliminado correctamente.');
+                        location.reload();
+                    } else {
+                        alert('Error al eliminar el pasante.');
+                    }
+                });
+            }
+        }
     });
+
+    function filtrarPasantes() {
+        const input = document.getElementById('buscarPasante');
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector('.pasantes-table tbody');
+        const rows = table.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            const td = rows[i].getElementsByTagName('td')[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+    }
     </script>
 </body>
 </html>
