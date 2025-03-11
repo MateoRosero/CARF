@@ -28,43 +28,10 @@
         button:hover {
             background-color: #007399;
         }
-        select#hora {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            padding: 8px 35px 8px 12px;
+        #mensaje-verificacion {
+            color: red;
             font-size: 14px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            width: 120px;
-            background-color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 8px center;
-            background-size: 14px;
-        }
-        select#hora:hover {
-            border-color: #007399;
-            box-shadow: 0 2px 4px rgba(0, 115, 153, 0.1);
-        }
-        select#hora:focus {
-            outline: none;
-            border-color: #007399;
-            box-shadow: 0 2px 6px rgba(0, 115, 153, 0.2);
-        }
-        select#hora option {
-            padding: 8px;
-            font-size: 14px;
-        }
-        select#hora option:first-child {
-            color: #666;
-            font-style: italic;
-        }
-        select#hora:not(:invalid) {
-            color: #007399;
-            font-weight: 500;
+            display: none;
         }
     </style>
 </head>
@@ -100,20 +67,19 @@
 
                 <div class="form-group">
                     <label for="fecha">Fecha:</label>
-                    <input type="date" id="fecha" name="fecha" required>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="fecha" name="fecha" required>
+                        <button type="button" id="btnVerificar" class="button">Verificar</button>
+                    </div>
                 </div>
+
+                <!-- Mensaje de carga -->
+                <p id="mensaje-verificacion">Verificando disponibilidad...</p>
 
                 <div class="form-group">
                     <label for="pasante">Seleccione un pasante:</label>
                     <select id="pasante" name="pasante_id" required>
                         <option value="">Seleccione un pasante</option>
-                        {% if pasantes %}
-                            {% for pasante in pasantes %}
-                                <option value="{{ pasante.id }}">{{ pasante.nombre }}</option>
-                            {% endfor %}
-                        {% else %}
-                            <option value="" disabled>No hay pasantes disponibles</option>
-                        {% endif %}
                     </select>
                 </div>
 
@@ -157,39 +123,50 @@
     <footer>
         <p>© 2025 Clínica de Fisioterapia UDLA</p>
     </footer>
-    <script>
-    async function actualizarHorariosDisponibles() {
-        const pasanteId = document.getElementById('pasante').value;
-        const fecha = document.getElementById('fecha').value;
-        const horarioSelect = document.getElementById('horario');
-        const tipoSelect = document.getElementById('tipo');
-        
-        if (pasanteId && fecha) {
-            const response = await fetch(`/get_horarios_ocupados?pasante_id=${pasanteId}&fecha=${fecha}`);
-            const horariosOcupados = await response.json();
-            
-            // Habilitar todas las opciones primero
-            Array.from(horarioSelect.options).forEach(option => {
-                option.disabled = false;
-            });
-            
-            // Deshabilitar horarios ocupados
-            Array.from(horarioSelect.options).forEach(option => {
-                if (horariosOcupados.includes(option.value)) {
-                    option.disabled = true;
-                }
-            });
-            
-            // Si el horario seleccionado está deshabilitado, limpiar la selección
-            if (horarioSelect.selectedOptions[0]?.disabled) {
-                horarioSelect.value = '';
-            }
-        }
-    }
 
-    document.getElementById('pasante').addEventListener('change', actualizarHorariosDisponibles);
-    document.getElementById('fecha').addEventListener('change', actualizarHorariosDisponibles);
-    document.getElementById('tipo').addEventListener('change', actualizarHorariosDisponibles);
+    <script>
+    document.getElementById('btnVerificar').addEventListener('click', async function () {
+        let fechaSeleccionada = document.getElementById('fecha').value;
+        let selectPasante = document.getElementById('pasante');
+        let mensaje = document.getElementById('mensaje-verificacion');
+
+        // Limpiar opciones anteriores
+        selectPasante.innerHTML = '<option value="">Seleccione un pasante</option>';
+        
+        if (!fechaSeleccionada) {
+            alert("Por favor, selecciona una fecha.");
+            return;
+        }
+
+        // Mostrar mensaje de verificación
+        mensaje.style.display = "block";
+
+        try {
+            let response = await fetch(`/api/pasantes_por_fecha?fecha=${fechaSeleccionada}`);
+            let pasantes = await response.json();
+
+            if (pasantes.length > 0) {
+                pasantes.forEach(p => {
+                    let option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = p.nombre;
+                    selectPasante.appendChild(option);
+                });
+            } else {
+                let option = document.createElement('option');
+                option.value = "";
+                option.textContent = "⚠️ No hay pasantes disponibles";
+                option.disabled = true;
+                selectPasante.appendChild(option);
+            }
+        } catch (error) {
+            console.error("Error al obtener pasantes:", error);
+        } finally {
+            // Ocultar mensaje de verificación
+            mensaje.style.display = "none";
+        }
+    });
     </script>
+
 </body>
 </html>

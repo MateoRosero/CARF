@@ -8,20 +8,23 @@ from flask_login import current_user
 class ReservaController:
     @staticmethod
     def mostrar_formulario():
-        fecha = request.form.get('fecha')  # Cambia a request.form si usas POST
-        print("Fecha recibida:", fecha)  # Verifica que la fecha se recibe correctamente
-        
+        fecha = request.form.get('fecha')  # Asegúrate de que viene en formato correcto
+        print("📩 Fecha recibida en formulario:", fecha)
+
         pasantes_disponibles = ReservaController.filtrar_pasantes_por_fecha(fecha)
+        print("📋 Pasantes enviados al frontend:", pasantes_disponibles)
+
         return render_template(
-        'reservar.html',
-        pasantes=pasantes_disponibles,
-        nombre=request.args.get('nombre', ''),
-        email=request.args.get('email', ''),
-        fecha=fecha,
-        celular=request.args.get('celular', ''),
-        pasante_id=request.args.get('pasante_id', ''),
-        tipo=request.args.get('tipo', '')
+            'reservar.html',
+            pasantes=pasantes_disponibles,
+            nombre=request.args.get('nombre', ''),
+            email=request.args.get('email', ''),
+            fecha=fecha,
+            celular=request.args.get('celular', ''),
+            pasante_id=request.args.get('pasante_id', ''),
+            tipo=request.args.get('tipo', '')
         )
+
 
     @staticmethod
     def verificar_solapamiento(pasante_id, fecha, horario_nuevo, tipo_nuevo):
@@ -53,12 +56,6 @@ class ReservaController:
 
     @staticmethod
     def procesar_reserva():
-        """
-        Procesa el POST (form) de la reserva:
-        1) Toma los datos (nombre, email, fecha, celular, pasante_id, horario, tipo).
-        2) Verifica que el pasante no tenga ya ese horario ocupado en la fecha elegida.
-        3) Si todo OK, guarda la reserva en la BD y muestra 'confirmacion.html'.
-        """
         try:
             nombre = request.form['nombre']
             email = request.form['email']
@@ -68,28 +65,22 @@ class ReservaController:
             horario = request.form['horario']
             tipo = request.form['tipo']
 
-            # 1. Parsear la fecha en formato YYYY-MM-DD
-            fecha_str = fecha
-            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            # Convertir fecha
+            fecha = datetime.strptime(fecha, '%Y-%m-%d').date()
 
-            # 2. Obtener el pasante (vía ID del form)
+            # Obtener el pasante
             pasante = Pasante.query.get(int(pasante_id))
 
-            # 3. Calcular el horario de fin
+            # Calcular el horario de fin
             horario_fin = ReservaController.calcular_horario_fin(horario, tipo)
             horario_completo = f"{horario} - {horario_fin}"
 
-            # 4. Verificar solapamiento antes de crear la reserva
-            if not ReservaController.verificar_solapamiento(
-                int(pasante_id),
-                fecha,
-                horario,
-                tipo
-            ):
+            # Verificar solapamiento
+            if not ReservaController.verificar_solapamiento(int(pasante_id), fecha, horario, tipo):
                 flash('No se puede reservar en este horario porque el pasante tiene otra cita que se solapa')
                 return redirect(url_for('mostrar_formulario'))
 
-            # 5. Crear la nueva reserva (no la guarda en la BD todavía)
+            # Crear la reserva SIN los campos administrativos (se llenan después)
             nueva_reserva = Reserva(
                 nombre=nombre,
                 email=email,
@@ -97,14 +88,18 @@ class ReservaController:
                 celular=celular,
                 pasante_id=pasante.id,
                 horario=horario_completo,
-                tipo=tipo
+                tipo=tipo,
+                tipo_atencion=None,  # Se llenará después
+                cobro_realizado=None,  # Se llenará después
+                genero=None,  # Se llenará después
+                tipo_paciente=None  # Se llenará después
             )
 
-            # 6. Guardar la reserva
+            # Guardar la reserva en la BD
             db.session.add(nueva_reserva)
             db.session.commit()
 
-            # 7. Renderizar confirmación
+            # Renderizar confirmación
             return render_template(
                 'confirmacion.html',
                 reserva_id=nueva_reserva.id,
@@ -208,39 +203,45 @@ class ReservaController:
 
     @staticmethod
     def actualizar_info_administrativa(reserva_id):
-        """Actualiza la información administrativa de una reserva"""
-        if not session.get('is_admin'):  # Verificar si es admin usando session
-            flash('No tienes permisos para realizar esta acción')
-            return redirect(url_for('admin_reservas'))
-        
         try:
             reserva = Reserva.query.get_or_404(reserva_id)
-            
-            # Actualizar la información
+
+            # Obtener los datos del formulario
             reserva.tipo_atencion = request.form.get('tipo_atencion')
-            reserva.cobro = request.form.get('cobro') == 'true'
+            reserva.cobro_realizado = request.form.get('cobro_realizado') == 'True'  # Convertir a booleano
             reserva.genero = request.form.get('genero')
-            reserva.es_externo = request.form.get('es_externo') == 'true'
-            
+            reserva.tipo_paciente = request.form.get('tipo_paciente')
+
             db.session.commit()
             flash('Información actualizada correctamente')
-            
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar la información: {str(e)}')
-        
+
         return redirect(url_for('admin_reservas'))
 
     @staticmethod
     def filtrar_pasantes_por_fecha(fecha):
         if fecha:
-            fecha_seleccionada = datetime.strptime(fecha, '%Y-%m-%d').date()
-            pasantes_disponibles = Pasante.query.filter(
-                Pasante.rango_trabajo_inicio <= fecha_seleccionada,
-                Pasante.rango_trabajo_fin >= fecha_seleccionada
-            ).all()
-            print("Pasantes disponibles:", pasantes_disponibles)
-            return pasantes_disponibles
+            try:
+                fecha_seleccionada = datetime.strptime(fecha, '%Y-%m-%d').date()
+                print("📅 Fecha seleccionada:", fecha_seleccionada)
+
+                pasantes_disponibles = db.session.query(Pasante).filter(
+                    Pasante.rango_trabajo_inicio <= fecha_seleccionada,
+                    Pasante.rango_trabajo_fin >= fecha_seleccionada
+                ).all()
+
+                if pasantes_disponibles:
+                    print(f"✅ Pasantes disponibles ({len(pasantes_disponibles)}): {[p.nombre for p in pasantes_disponibles]}")
+                else:
+                    print("⚠️ No hay pasantes disponibles para esta fecha.")
+
+                return pasantes_disponibles
+            except Exception as e:
+                print("❌ Error al filtrar pasantes:", e)
+                return []
         else:
-            print("No se recibió una fecha válida.")
+            print("⚠️ No se recibió una fecha válida.")
             return []
+

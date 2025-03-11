@@ -305,7 +305,7 @@ def actualizar_info_reserva(reserva_id):
         tipo_atencion = request.form.get('tipo_atencion')
         cobro_realizado = request.form.get('cobro') == 'true'
         genero = request.form.get('genero')
-        tipo_paciente = request.form.get('es_externo') == 'true'
+        tipo_paciente = request.json.get('tipo_paciente')  # Asegura que se recibe como string
 
         # Actualizar los campos de la reserva
         reserva.tipo_atencion = tipo_atencion
@@ -362,6 +362,18 @@ def actualizar_info_reserva(reserva_id):
 #    })
 
 app.register_blueprint(admin_bp, url_prefix='/admin')  # Asegúrate de que esto esté presente
+
+# Ruta para obtener pasantes disponibles por fecha (usando filtrar_pasantes_por_fecha)
+@app.route('/api/pasantes_por_fecha', methods=['GET'])
+def obtener_pasantes_por_fecha():
+    fecha = request.args.get('fecha')
+    pasantes = ReservaController.filtrar_pasantes_por_fecha(fecha)
+
+    # Convertimos los pasantes en JSON para que el frontend pueda usarlos
+    pasantes_json = [{"id": p.id, "nombre": p.nombre} for p in pasantes]
+    
+    return jsonify(pasantes_json)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
