@@ -213,12 +213,13 @@ class ReservaController:
             reserva.tipo_paciente = request.form.get('tipo_paciente')
 
             db.session.commit()
-            flash('Información actualizada correctamente')
+            return jsonify({'success': True, 'message': 'Información actualizada correctamente'})
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar la información: {str(e)}')
 
-        return redirect(url_for('admin_reservas'))
+        return jsonify({'success': True, 'message': 'Información actualizada correctamente'})
+
 
     @staticmethod
     def filtrar_pasantes_por_fecha(fecha):

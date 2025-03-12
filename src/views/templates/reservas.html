@@ -267,22 +267,38 @@
         document.getElementById('infoModal').style.display = "none";
     }
 
-    $('#formulario-actualizar').on('submit', function(event) {
-        event.preventDefault();
-        console.log("Formulario enviado");
-        $.ajax({
-            url: $(this).attr('action'),
-            method: 'POST',
-            data: $(this).serialize(),
-            success: function(response) {
-                if (response.success) {
-                    alert(response.message);
-                    // Aquí puedes recargar la información de la reserva
-                } else {
-                    alert(response.message);
-                }
-            }
+    document.getElementById("formulario-actualizar").addEventListener("submit", async function(event) {
+    event.preventDefault();  // Evita que el formulario recargue la página
+
+    const reservaId = "{{ reserva_id }}";  // ID de la reserva
+    const tipoAtencion = document.getElementById("tipo_atencion").value;
+    const cobroRealizado = document.getElementById("cobro").value;
+    const genero = document.getElementById("genero").value;
+    const tipoPaciente = document.getElementById("es_externo").value;
+
+    const data = {
+        tipo_atencion: tipoAtencion,
+        cobro: cobroRealizado,
+        genero: genero,
+        tipo_paciente: tipoPaciente
+    };
+
+    try {
+        const response = await fetch(`/admin/actualizar-info-reserva/${reservaId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
         });
+
+        const result = await response.json();
+        alert(result.message);
+
+        if (result.success) {
+            location.reload();  // Recargar la página si todo salió bien
+        }
+    } catch (error) {
+        alert("Error al actualizar: " + error);
+    }
     });
     </script>
 </body>

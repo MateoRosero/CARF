@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_file
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_file  
 from database import db, init_db
 from config import Config
 import os
@@ -11,6 +11,7 @@ import socket
 from utils.decorators import login_required, admin_required
 from controllers.auth_controller import AuthController
 #from utils.enviar_sms import enviar_sms
+from models.asistencia_qr import AsistenciaQR
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
@@ -262,10 +263,11 @@ def ver_reservas():
 
 @app.route('/admin/qr')
 def generar_qr():
-    token = secrets.token_urlsafe(16)
-    tokens[token] = datetime.now() + timedelta(seconds=30)
+    nuevo_qr = AsistenciaQR()
+    db.session.add(nuevo_qr)
+    db.session.commit()
 
-    url_formulario = f"https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u&token={token}"
+    url_formulario = f"https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u&token={nuevo_qr.qr_code}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_formulario)
@@ -281,10 +283,18 @@ def generar_qr():
 @app.route('/validar_qr')
 def validar_qr():
     token = request.args.get('token')
-    expiry = tokens.get(token)
-    
-    if expiry and datetime.now() < expiry:
-        del tokens[token]  # Eliminar el token para que no se reutilice
+    qr_code = AsistenciaQR.query.filter_by(qr_code=token, used=False).first()
+
+    if qr_code and datetime.now(timezone.utc) - qr_code.timestamp < timedelta(seconds=30):
+        try:
+            qr_code.used = True
+            db.session.commit()
+            print("QR marcado como usado")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error al actualizar el QR: {e}")
+            return "Error al procesar el QR", 500
+
         return redirect("https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u")
     else:
         return "QR inválido o expirado", 403
@@ -298,27 +308,23 @@ def actualizar_info_reserva(reserva_id):
     try:
         reserva = Reserva.query.get(reserva_id)
         if not reserva:
-            flash("Reserva no encontrada.")
-            return jsonify({'success': False, 'message': 'Reserva no encontrada'})
+            return jsonify({'success': False, 'message': 'Reserva no encontrada'}), 404
 
-        # Obtener datos del formulario
-        tipo_atencion = request.form.get('tipo_atencion')
-        cobro_realizado = request.form.get('cobro') == 'true'
-        genero = request.form.get('genero')
-        tipo_paciente = request.json.get('tipo_paciente')  # Asegura que se recibe como string
+        data = request.get_json()  # Asegurar que Flask obtiene JSON
 
-        # Actualizar los campos de la reserva
-        reserva.tipo_atencion = tipo_atencion
-        reserva.cobro_realizado = cobro_realizado
-        reserva.genero = genero
-        reserva.tipo_paciente = tipo_paciente
+        reserva.tipo_atencion = data.get('tipo_atencion', reserva.tipo_atencion)
+        reserva.cobro_realizado = data.get('cobro', reserva.cobro_realizado) == "true"
+        reserva.genero = data.get('genero', reserva.genero)
+        reserva.tipo_paciente = data.get('tipo_paciente', reserva.tipo_paciente)
 
-        # Guardar cambios en la base de datos
         db.session.commit()
         return jsonify({'success': True, 'message': 'Información actualizada correctamente'})
+    
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'Error al actualizar: {str(e)}'})
+        return jsonify({'success': False, 'message': f'Error al actualizar: {str(e)}'}), 500
+
+
 
 #@app.route('/enviar_sms', methods=['POST'])
 #def enviar_sms_endpoint():
