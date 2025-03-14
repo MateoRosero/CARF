@@ -282,6 +282,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2><i class="fas fa-user-plus"></i> Agregar Nuevo Pasante</h2>
                 <a href="{{ url_for('ver_reservas') }}" class="button">Ver Reservas</a>
+                <a href="{{ url_for('asistencia_pasantes') }}" class="button">Asistencia Pasantes</a>
             </div>
             <form action="{{ url_for('admin.agregar_pasante') }}" method="POST">
                 <input type="text" name="nombre" placeholder="Nombre" required>
@@ -296,7 +297,8 @@
         </div>
 
         <div style="margin-top: 20px;">
-            <button onclick="mostrarQR()" class="button">Mostrar QR</button>
+            <button onclick="mostrarQRPasantes()" class="button">Mostrar QR Pasantes</button>
+            <button onclick="mostrarQRProfesores()" class="button">Mostrar QR Profesores</button>
         </div>
 
         <h2>Lista de Pasantes Registrados</h2>
@@ -328,6 +330,7 @@
                         <td>{{ pasante.rango_trabajo_inicio }} - {{ pasante.rango_trabajo_fin }}</td>
                         <td>
                             <button class="editar-btn" data-id="{{ pasante.id }}" data-nombre="{{ pasante.nombre }}" data-cedula="{{ pasante.cedula }}" data-correo="{{ pasante.correo }}" data-telefono="{{ pasante.telefono }}" data-id_banner="{{ pasante.id_banner }}" data-rango_inicio="{{ pasante.rango_trabajo_inicio }}" data-rango_fin="{{ pasante.rango_trabajo_fin }}">Editar</button>
+                            <button onclick="mostrarQRModal('{{ pasante.id }}')">Generar QR</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -396,7 +399,7 @@
     </div>
 
     <script>
-    function mostrarQR() {
+    function mostrarQRPasantes() {
         const qrModal = document.getElementById('qrModal');
         const qrImage = document.getElementById('qrImage');
         const progress = document.getElementById('progress');
@@ -413,7 +416,27 @@
                 clearInterval(interval);
                 cerrarQR();
             }
-        }, 300);
+        }, 100);
+    }
+
+    function mostrarQRProfesores() {
+        const qrModal = document.getElementById('qrModal');
+        const qrImage = document.getElementById('qrImage');
+        const progress = document.getElementById('progress');
+        
+        qrImage.src = "{{ url_for('generar_qr_profesores') }}" + "?t=" + new Date().getTime();
+        qrModal.style.display = 'flex';
+        progress.style.width = '0%';
+        
+        let width = 0;
+        const interval = setInterval(() => {
+            width += 1;
+            progress.style.width = width + '%';
+            if (width >= 100) {
+                clearInterval(interval);
+                cerrarQR();
+            }
+        }, 100);
     }
 
     function cerrarQR() {
@@ -504,6 +527,16 @@
                 }
             }
         }
+    }
+
+    function mostrarQRModal(pasanteId) {
+        const qrImage = document.getElementById('qrImage');
+        qrImage.src = `/generar_qr_pasante/${pasanteId}`;
+        document.getElementById('qrModal').style.display = 'block';
+    }
+
+    function cerrarModal() {
+        document.getElementById('qrModal').style.display = 'none';
     }
     </script>
 </body>

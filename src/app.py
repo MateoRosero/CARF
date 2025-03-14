@@ -1,17 +1,23 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_file  
 from database import db, init_db
 from config import Config
+from sqlalchemy import text
 import os
 from datetime import datetime, timedelta, timezone
 from admin.admin import admin_bp
 import qrcode
 import io
 import secrets
+import time
+import jwt
+import uuid
 import socket
 from utils.decorators import login_required, admin_required
 from controllers.auth_controller import AuthController
 #from utils.enviar_sms import enviar_sms
 from models.asistencia_qr import AsistenciaQR
+from models.pasante import Pasante
+from models.asistencia_pasante import AsistenciaPasante
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
@@ -27,7 +33,6 @@ app.secret_key = 'tu_clave_secreta'
 # Importar modelos
 from models.doctor import Doctor
 from models.reserva import Reserva
-from models.pasante import Pasante
 
 def insertar_doctores_iniciales():
     with app.app_context():
@@ -261,43 +266,81 @@ def ver_reservas():
     reservas = Reserva.query.filter(Reserva.fecha.in_([d.date() for d in dias])).all()
     return render_template('reservas.html', reservas=reservas, dias=dias, horas=horas)
 
+TOKEN_EXPIRATION_SECONDS = 10
+
+def generate_token():
+    payload = {
+        'iat': time.time(),
+        'exp': time.time() + TOKEN_EXPIRATION_SECONDS,  # Expira en 10 segundos
+        'nonce': str(uuid.uuid4())  # Valor único para cada token
+    }
+    token = jwt.encode(payload, app.secret_key, algorithm='HS256')
+    return token
+
+# Ruta para generar un nuevo QR
+@app.route('/admin/qr')
 @app.route('/admin/qr')
 def generar_qr():
-    nuevo_qr = AsistenciaQR()
+    token = generate_token()  # Genera el token JWT
+    nuevo_qr = AsistenciaQR(qr_code=token)
     db.session.add(nuevo_qr)
     db.session.commit()
 
-    url_formulario = f"https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u&token={nuevo_qr.qr_code}"
-
+    # Reemplaza 192.168.0.10 por la IP local de tu computadora
+    url_valida = f"http://localhost:5000/validar_qr?token={token}"
+    
+    # Crear el código QR con la URL que usará tu teléfono para validar
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(url_formulario)
+    qr.add_data(url_valida)
     qr.make(fit=True)
-
+    
     img = qr.make_image(fill='black', back_color='white')
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
 
     return send_file(buf, mimetype='image/png')
+# Ruta para validar un QR y redirigir al formulario
+from flask import Flask, request, jsonify, redirect
+from database import db
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 
 @app.route('/validar_qr')
 def validar_qr():
     token = request.args.get('token')
-    qr_code = AsistenciaQR.query.filter_by(qr_code=token, used=False).first()
+    if not token:
+        return jsonify({"error": "No se proporcionó un token"}), 400
 
-    if qr_code and datetime.now(timezone.utc) - qr_code.timestamp < timedelta(seconds=30):
-        try:
-            qr_code.used = True
-            db.session.commit()
-            print("QR marcado como usado")
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error al actualizar el QR: {e}")
-            return "Error al procesar el QR", 500
+    try:
+        payload = jwt.decode(token, app.secret_key, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "El token ha expirado"}), 403
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Token inválido"}), 403
 
-        return redirect("https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUQjVBTDNXSFFJVFNOOUZBQVdVMlVUNUZOVy4u")
-    else:
-        return "QR inválido o expirado", 403
+    try:
+        resultado = db.session.execute(
+            text("UPDATE asistencia_qr SET used = TRUE WHERE qr_code = :qr_code AND used = FALSE RETURNING used"),
+            {"qr_code": token}
+        )
+        db.session.commit()
+
+        qr_actualizado = resultado.fetchone()
+
+        if not qr_actualizado:
+            return jsonify({"error": "Este QR ya ha sido usado o no existe"}), 403
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"error": "Error en la base de datos", "detalle": str(e)}), 500
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Error inesperado", "detalle": str(e)}), 500
+
+        # Si todo OK, redirige a Forms
+        return redirect("https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUNFpFR1I0T09MTk00OVlXSjNJUTBESk9RRC4u")
+
 
 @app.route('/get_horarios_ocupados')
 def get_horarios_ocupados():
@@ -380,6 +423,67 @@ def obtener_pasantes_por_fecha():
     
     return jsonify(pasantes_json)
 
+@app.route('/admin/qr_profesores')
+def generar_qr_profesores():
+    url_formulario = "https://forms.office.com/Pages/ResponsePage.aspx?id=kk1aWB3bu0u1rMUpnjiU4zat9_r3URZDmmaY1ocADXVUNFpFR1I0T09MTk00OVlXSjNJUTBESk9RRC4u"
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(url_formulario)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+
+    return send_file(buf, mimetype='image/png')
+
+@app.route('/escanear_qr_pasante', methods=['POST'])
+def escanear_qr_pasante():
+    qr_code = request.form.get('qr_code')
+    pasante = Pasante.query.filter_by(qr_code=qr_code).first()
+    
+    if not pasante:
+        return jsonify({"error": "QR no válido"}), 400
+    
+    nueva_asistencia = AsistenciaPasante(
+        pasante_id=pasante.id,
+        fecha=datetime.now().date(),
+        hora=datetime.now().time(),
+        qr_code=qr_code
+    )
+    
+    db.session.add(nueva_asistencia)
+    db.session.commit()
+    
+    return jsonify({"success": "Asistencia registrada exitosamente"}), 200
+
+@app.route('/generar_qr_pasante/<int:pasante_id>')
+def generar_qr_pasante(pasante_id):
+    pasante = Pasante.query.get(pasante_id)
+    if not pasante:
+        return "Pasante no encontrado", 404
+
+    data = f"{pasante.id}"  # Usar el ID del pasante para el QR
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    
+    # Guardar el QR en la base de datos
+    pasante.qr_code = data
+    db.session.commit()
+    
+    return send_file(buf, mimetype='image/png')
+
+@app.route('/asistencia_pasantes')
+def asistencia_pasantes():
+    asistencias = AsistenciaPasante.query.all()
+    return render_template('asistencia_pasantes.html', asistencias=asistencias)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

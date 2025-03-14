@@ -11,8 +11,10 @@ class Pasante(db.Model):
     telefono = db.Column(db.String(20), nullable=False)
     rango_trabajo_inicio = db.Column(db.Date, nullable=False)
     rango_trabajo_fin = db.Column(db.Date, nullable=False)
+    qr_code = db.Column(db.Text, nullable=True)
     
     reservas = db.relationship('Reserva', back_populates='pasante', lazy=True)
+    asistencias = db.relationship('AsistenciaPasante', back_populates='pasante', lazy=True)
 
     def __init__(self, nombre, cedula, correo, id_banner, telefono, rango_trabajo_inicio, rango_trabajo_fin):
         self.nombre = nombre

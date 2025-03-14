@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asistencia de Pasantes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h2>Asistencia de Pasantes</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Registrado</th>
+                <th>Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for asistencia in asistencias %}
+            <tr>
+                <td>{{ asistencia.pasante.nombre }}</td>
+                <td>Registrado</td>
+                <td>{{ asistencia.hora }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3">No hay asistencias registradas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
