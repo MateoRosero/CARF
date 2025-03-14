@@ -438,25 +438,31 @@ def generar_qr_profesores():
 
     return send_file(buf, mimetype='image/png')
 
-@app.route('/escanear_qr_pasante', methods=['POST'])
+@app.route('/escanear_qr_pasante', methods=['GET', 'POST'])
 def escanear_qr_pasante():
-    qr_code = request.form.get('qr_code')
-    pasante = Pasante.query.filter_by(qr_code=qr_code).first()
-    
+    qr_code = request.args.get('qr_code')  # Obtener el código desde la URL
+
+    if not qr_code:
+        return jsonify({"error": "No se proporcionó un código QR"}), 400
+
+    # Buscar el pasante en la base de datos
+    pasante = Pasante.query.filter_by(id=qr_code).first()
     if not pasante:
-        return jsonify({"error": "QR no válido"}), 400
-    
+        return jsonify({"error": "Pasante no encontrado"}), 400
+
+    # Registrar la asistencia
     nueva_asistencia = AsistenciaPasante(
         pasante_id=pasante.id,
         fecha=datetime.now().date(),
         hora=datetime.now().time(),
         qr_code=qr_code
     )
-    
+
     db.session.add(nueva_asistencia)
     db.session.commit()
-    
-    return jsonify({"success": "Asistencia registrada exitosamente"}), 200
+
+    # Redirigir al usuario a la página de asistencia
+    return redirect("/asistencia_pasantes")
 
 @app.route('/generar_qr_pasante/<int:pasante_id>')
 def generar_qr_pasante(pasante_id):
@@ -464,26 +470,26 @@ def generar_qr_pasante(pasante_id):
     if not pasante:
         return "Pasante no encontrado", 404
 
-    data = f"{pasante.id}"  # Usar el ID del pasante para el QR
+    # 🟢 Generar el QR con la IP correcta
+    url_qr = f"http://10.180.0.30:5000/escanear_qr_pasante?qr_code={pasante.id}"
+
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(data)
+    qr.add_data(url_qr)
     qr.make(fit=True)
-    
+
     img = qr.make_image(fill='black', back_color='white')
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-    
-    # Guardar el QR en la base de datos
-    pasante.qr_code = data
-    db.session.commit()
-    
+
     return send_file(buf, mimetype='image/png')
+
 
 @app.route('/asistencia_pasantes')
 def asistencia_pasantes():
     asistencias = AsistenciaPasante.query.all()
     return render_template('asistencia_pasantes.html', asistencias=asistencias)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

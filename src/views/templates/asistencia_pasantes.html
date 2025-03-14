@@ -11,7 +11,7 @@
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Registrado</th>
+                <th>Fecha</th>
                 <th>Hora</th>
             </tr>
         </thead>
@@ -19,7 +19,7 @@
             {% for asistencia in asistencias %}
             <tr>
                 <td>{{ asistencia.pasante.nombre }}</td>
-                <td>Registrado</td>
+                <td>{{ asistencia.fecha }}</td>
                 <td>{{ asistencia.hora }}</td>
             </tr>
             {% else %}
