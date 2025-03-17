@@ -18,6 +18,9 @@ from controllers.auth_controller import AuthController
 from models.asistencia_qr import AsistenciaQR
 from models.pasante import Pasante
 from models.asistencia_pasante import AsistenciaPasante
+import pandas as pd
+from io import BytesIO
+from models.asistencia_doctor import AsistenciaDoctor
 
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'views/templates'))
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
@@ -266,6 +269,31 @@ def ver_reservas():
     reservas = Reserva.query.filter(Reserva.fecha.in_([d.date() for d in dias])).all()
     return render_template('reservas.html', reservas=reservas, dias=dias, horas=horas)
 
+@app.route('/reservas')
+def mostrar_reservas():
+    # Obtener las reservas y pasantes
+    reservas = Reserva.query.all()
+    pasantes = Pasante.query.all()
+
+    # Contar reservas por pasante
+    pasantes_reservas = {}
+    for reserva in reservas:
+        pasante_id = reserva.pasante_id
+        if pasante_id in pasantes_reservas:
+            pasantes_reservas[pasante_id] += 1
+        else:
+            pasantes_reservas[pasante_id] = 1
+
+    # Convertir a lista de tuplas y ordenar
+    pasantes_reservas = sorted(
+        [(pasante.nombre, pasantes_reservas.get(pasante.id, 0)) for pasante in pasantes],
+        key=lambda x: x[1]
+    )
+
+    # Renderizar la plantilla con las reservas y los pasantes
+    return render_template('reservas.html', reservas=reservas, pasantes_reservas=pasantes_reservas)
+
+
 TOKEN_EXPIRATION_SECONDS = 10
 
 def generate_token():
@@ -490,6 +518,130 @@ def asistencia_pasantes():
     asistencias = AsistenciaPasante.query.all()
     return render_template('asistencia_pasantes.html', asistencias=asistencias)
 
+@app.route('/descargar_reporte')
+def descargar_reporte():
+    # Obtener los datos de asistencia
+    datos = obtener_datos_asistencia()
+
+    # Crear un DataFrame con los datos obtenidos
+    df = pd.DataFrame(datos)
+    
+    # Guardar el DataFrame en un archivo Excel en memoria
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Asistencia')
+    
+    output.seek(0)
+    
+    # Enviar el archivo Excel al cliente
+    return send_file(output, download_name="reporte_asistencia.xlsx", as_attachment=True)
+
+def obtener_datos_asistencia():
+    # Suponiendo que AsistenciaPasante tiene una relación con Pasante
+    asistencias = AsistenciaPasante.query.all()
+    datos = []
+    for asistencia in asistencias:
+        pasante = Pasante.query.get(asistencia.pasante_id)
+        datos.append({
+            'Nombre': pasante.nombre,  # Nombre del pasante
+            'Fecha': asistencia.fecha,
+            'Hora': asistencia.hora
+        })
+    return datos
+
+@app.route('/registrar_asistencia_doctor', methods=['POST'])
+def registrar_asistencia_doctor():
+    qr_code = request.form.get('qr_code')
+    doctor = Doctor.query.filter_by(qr_code=qr_code).first()
+    if doctor:
+        nueva_asistencia = AsistenciaDoctor(
+            doctor_id=doctor.id,
+            fecha=datetime.now().date(),
+            hora=datetime.now().time(),
+            qr_code=qr_code
+        )
+        db.session.add(nueva_asistencia)
+        db.session.commit()
+        return jsonify({'mensaje': 'Asistencia registrada correctamente'}), 200
+    return jsonify({'mensaje': 'QR no válido'}), 400
+
+def obtener_datos_asistencia_doctores():
+    asistencias = AsistenciaDoctor.query.all()
+    datos = []
+    for asistencia in asistencias:
+        doctor = Doctor.query.get(asistencia.doctor_id)
+        datos.append({
+            'Nombre': doctor.nombre,
+            'Fecha': asistencia.fecha,
+            'Hora': asistencia.hora
+        })
+    return datos
+
+@app.route('/descargar_reporte_doctores')
+def descargar_reporte_doctores():
+    datos = obtener_datos_asistencia_doctores()
+
+    df = pd.DataFrame(datos)
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Asistencia Doctores')
+    
+    output.seek(0)
+    
+    return send_file(output, download_name="reporte_asistencia_doctores.xlsx", as_attachment=True)
+
+@app.route('/generar_qr_doctor/<int:doctor_id>')
+def generar_qr_doctor(doctor_id):
+    doctor = Doctor.query.get(doctor_id)
+    if not doctor:
+        return "Doctor no encontrado", 404
+
+    # 🟢 Generar la URL correcta con la IP del servidor
+    url_qr = f"http://10.180.0.30:5000/escanear_qr_doctor?qr_code={doctor.id}"
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(url_qr)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+
+    return send_file(buf, mimetype='image/png')
+
+@app.route('/escanear_qr_doctor', methods=['GET', 'POST'])
+def escanear_qr_doctor():
+    qr_code = request.args.get('qr_code')  # Obtener el código QR desde la URL
+
+    if not qr_code:
+        return jsonify({"error": "No se proporcionó un código QR"}), 400
+
+    # Buscar el doctor en la base de datos
+    doctor = Doctor.query.filter_by(id=qr_code).first()
+    if not doctor:
+        return jsonify({"error": "Doctor no encontrado"}), 400
+
+    # Registrar la asistencia en la tabla asistencia_doctor
+    nueva_asistencia = AsistenciaDoctor(
+        doctor_id=doctor.id,
+        fecha=datetime.now().date(),
+        hora=datetime.now().time(),
+        qr_code=qr_code
+    )
+
+    db.session.add(nueva_asistencia)
+    db.session.commit()
+
+    # Redirigir al usuario a la página de asistencia de doctores
+    return redirect("/asistencia_doctores")
+
+
+@app.route('/asistencia_doctores')
+def asistencia_doctores():
+    asistencias = obtener_datos_asistencia_doctores()
+    return render_template('asistencia_doctores.html', asistencias=asistencias)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

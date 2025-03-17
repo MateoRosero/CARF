@@ -2,10 +2,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         /* Estilos para el modal */
         .modal {
@@ -118,43 +120,66 @@
         <a href="{{ url_for('admin.index') }}" class="nav-link">Panel de Administración</a>
     </div>
 
-    <div class="reservas-container">
-        <h1>Reservas</h1>
-        <form method="POST">
-            <label for="fecha">Seleccionar semana:</label>
-            <input type="date" id="fecha" name="fecha" value="{{ dias[0].strftime('%Y-%m-%d') }}">
-            <button type="submit">Filtrar</button>
-        </form>
-        <table class="reservas-table">
-            <thead>
-                <tr>
-                    <th>Hora</th>
-                    <th>Lunes</th>
-                    <th>Martes</th>
-                    <th>Miércoles</th>
-                    <th>Jueves</th>
-                    <th>Viernes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for hora in horas %}
-                <tr>
-                    <td>{{ hora }}</td>
-                    {% for dia in dias %}
-                    <td>
-                        {% for reserva in reservas %}
-                        {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
-                            <button class="reserva-btn" onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
-                                {{ reserva.pasante.nombre }}
-                            </button>
-                        {% endif %}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <h2>Reservas</h2>
+                <form method="POST">
+                    <label for="fecha">Seleccionar semana:</label>
+                    <input type="date" id="fecha" name="fecha" value="{{ dias[0].strftime('%Y-%m-%d') }}">
+                    <button type="submit">Filtrar</button>
+                </form>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Lunes</th>
+                            <th>Martes</th>
+                            <th>Miércoles</th>
+                            <th>Jueves</th>
+                            <th>Viernes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hora in horas %}
+                        <tr>
+                            <td>{{ hora }}</td>
+                            {% for dia in dias %}
+                            <td>
+                                {% for reserva in reservas %}
+                                {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
+                                    <button class="reserva-btn" onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
+                                        {{ reserva.pasante.nombre }}
+                                    </button>
+                                {% endif %}
+                                {% endfor %}
+                            </td>
+                            {% endfor %}
+                        </tr>
                         {% endfor %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <h2>Pasantes y Reservas</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Pasante</th>
+                            <th>Reservas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pasante, reservas in pasantes_reservas %}
+                        <tr>
+                            <td>{{ pasante }}</td>
+                            <td>{{ reservas }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Modal para el administrador -->

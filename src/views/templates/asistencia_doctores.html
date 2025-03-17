@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencia de Doctores</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Asistencia de Doctores</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asistencia in asistencias %}
+                <tr>
+                    <td>{{ asistencia.Nombre }}</td>
+                    <td>{{ asistencia.Fecha }}</td>
+                    <td>{{ asistencia.Hora }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/descargar_reporte_doctores" class="btn btn-primary">Descargar Reporte</a>
+    </div>
+</body>
+</html>
