@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +19,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.5);
         }
 
         .modal-content {
@@ -28,7 +29,7 @@
             border-radius: 10px;
             width: 80%;
             max-width: 900px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .reserva-container {
@@ -36,7 +37,8 @@
             gap: 30px;
         }
 
-        .info-paciente, .form-admin {
+        .info-paciente,
+        .form-admin {
             flex: 1;
             padding: 20px;
         }
@@ -112,8 +114,46 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #0099cc;
         }
+
+        .contenedor-tablas {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px;
+        }
+
+        .tabla-horarios {
+            width: 70%;
+            margin-right: 20px;
+        }
+
+        .tabla-pasantes {
+            width: 28%;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: black;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
     </style>
 </head>
+
 <body>
     <div class="navbar">
         <a href="{{ url_for('index') }}" class="nav-link">Regresar a la página principal</a>
@@ -121,8 +161,8 @@
     </div>
 
     <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8">
+        <div class="contenedor-tablas">
+            <div class="tabla-horarios">
                 <h2>Reservas</h2>
                 <form method="POST">
                     <label for="fecha">Seleccionar semana:</label>
@@ -148,9 +188,10 @@
                             <td>
                                 {% for reserva in reservas %}
                                 {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
-                                    <button class="reserva-btn" onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
-                                        {{ reserva.pasante.nombre }}
-                                    </button>
+                                <button class="reserva-btn"
+                                    onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
+                                    {{ reserva.pasante.nombre }}
+                                </button>
                                 {% endif %}
                                 {% endfor %}
                             </td>
@@ -160,22 +201,30 @@
                     </tbody>
                 </table>
             </div>
-            <div class="col-md-4">
+            <div class="tabla-pasantes">
                 <h2>Pasantes y Reservas</h2>
                 <table class="table">
                     <thead>
                         <tr>
+                            <th>Posición</th>
                             <th>Pasante</th>
                             <th>Reservas</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for pasante, reservas in pasantes_reservas %}
-                        <tr>
-                            <td>{{ pasante }}</td>
-                            <td>{{ reservas }}</td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="ranking-pasantes">
+                        {% if pasantes_con_reservas %}
+                            {% for pasante in pasantes_con_reservas %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ pasante.nombre }}</td>
+                                <td>{{ pasante.total_reservas }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center">No hay pasantes con reservas registradas.</td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -219,7 +268,8 @@
                 <!-- Columna derecha: Formulario administrativo -->
                 <div class="form-admin">
                     <h3>Información Administrativa</h3>
-                    <form id="formulario-actualizar" action="/admin/actualizar-info-reserva/{{ reserva_id }}" method="POST">
+                    <form id="formulario-actualizar" action="/admin/actualizar-info-reserva/{{ reserva_id }}"
+                        method="POST">
                         <div class="form-group">
                             <label for="tipo_atencion">Tipo de Atención:</label>
                             <select name="tipo_atencion" id="tipo_atencion" required>
@@ -268,63 +318,79 @@
     </div>
 
     <script>
-    function mostrarInfoAdmin(reservaId, nombre, email, fecha, celular, tipo, horario, pasante) {
-        const modal = document.getElementById('infoModal');
-        const nombreCliente = document.getElementById('nombreCliente');
-        const emailCliente = document.getElementById('emailCliente');
-        const fechaReserva = document.getElementById('fechaReserva');
-        const celularCliente = document.getElementById('celularCliente');
-        const horarioReserva = document.getElementById('horarioReserva');
-        const pasanteNombre = document.getElementById('pasanteNombre');
-        
-        // Información básica de la reserva
-        nombreCliente.textContent = nombre;
-        emailCliente.textContent = email;
-        fechaReserva.textContent = fecha;
-        celularCliente.textContent = celular;
-        horarioReserva.textContent = horario;
-        pasanteNombre.textContent = pasante;
-        
-        modal.style.display = "block";
-    }
+        function mostrarInfoAdmin(reservaId, nombre, email, fecha, celular, tipo, horario, pasante) {
+            const modal = document.getElementById('infoModal');
+            const nombreCliente = document.getElementById('nombreCliente');
+            const emailCliente = document.getElementById('emailCliente');
+            const fechaReserva = document.getElementById('fechaReserva');
+            const celularCliente = document.getElementById('celularCliente');
+            const horarioReserva = document.getElementById('horarioReserva');
+            const pasanteNombre = document.getElementById('pasanteNombre');
 
-    function cerrarModal() {
-        document.getElementById('infoModal').style.display = "none";
-    }
+            // Información básica de la reserva
+            nombreCliente.textContent = nombre;
+            emailCliente.textContent = email;
+            fechaReserva.textContent = fecha;
+            celularCliente.textContent = celular;
+            horarioReserva.textContent = horario;
+            pasanteNombre.textContent = pasante;
 
-    document.getElementById("formulario-actualizar").addEventListener("submit", async function(event) {
-    event.preventDefault();  // Evita que el formulario recargue la página
+            modal.style.display = "block";
+        }
 
-    const reservaId = "{{ reserva_id }}";  // ID de la reserva
-    const tipoAtencion = document.getElementById("tipo_atencion").value;
-    const cobroRealizado = document.getElementById("cobro").value;
-    const genero = document.getElementById("genero").value;
-    const tipoPaciente = document.getElementById("es_externo").value;
+        function cerrarModal() {
+            document.getElementById('infoModal').style.display = "none";
+        }
 
-    const data = {
-        tipo_atencion: tipoAtencion,
-        cobro: cobroRealizado,
-        genero: genero,
-        tipo_paciente: tipoPaciente
-    };
+        document.getElementById("formulario-actualizar").addEventListener("submit", async function (event) {
+            event.preventDefault();  // Evita que el formulario recargue la página
 
-    try {
-        const response = await fetch(`/admin/actualizar-info-reserva/${reservaId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            const reservaId = "{{ reserva_id }}";  // ID de la reserva
+            const tipoAtencion = document.getElementById("tipo_atencion").value;
+            const cobroRealizado = document.getElementById("cobro").value;
+            const genero = document.getElementById("genero").value;
+            const tipoPaciente = document.getElementById("es_externo").value;
+
+            const data = {
+                tipo_atencion: tipoAtencion,
+                cobro: cobroRealizado,
+                genero: genero,
+                tipo_paciente: tipoPaciente
+            };
+
+            try {
+                const response = await fetch(`/admin/actualizar-info-reserva/${reservaId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                alert(result.message);
+
+                if (result.success) {
+                    location.reload();  // Recargar la página si todo salió bien
+                }
+            } catch (error) {
+                alert("Error al actualizar: " + error);
+            }
         });
 
-        const result = await response.json();
-        alert(result.message);
-
-        if (result.success) {
-            location.reload();  // Recargar la página si todo salió bien
+        function actualizarRankingPasantes() {
+            fetch("{{ url_for('admin.ver_reservas') }}")
+                .then(response => response.text())
+                .then(data => {
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(data, "text/html");
+                    let newRankingTable = doc.querySelector("#ranking-pasantes").innerHTML;
+                    document.querySelector("#ranking-pasantes").innerHTML = newRankingTable;
+                })
+                .catch(error => console.error("Error actualizando ranking:", error));
         }
-    } catch (error) {
-        alert("Error al actualizar: " + error);
-    }
-    });
+
+        // Actualizar cada 10 segundos sin afectar el calendario
+        setInterval(actualizarRankingPasantes, 5000);
+
     </script>
 </body>
 </html>

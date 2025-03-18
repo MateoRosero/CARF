@@ -55,6 +55,8 @@ def insertar_doctores_iniciales():
                 Doctor(nombre="FT. Andrés Arcos", especialidad="Coordinador académico de fisioterapia, Maestría en Salud y Seguridad Ocupacional", imagen="Andres Arcos.jpg"),
                 Doctor(nombre="FT. Sara Piarpuzan", especialidad="Máster en terapia manual", imagen="Sara Piarpuezan.jpg"),
                 Doctor(nombre="FT. Xavier Silva", especialidad="Máster en terapia manual", imagen="Xavier Silva.jpg"),
+                Doctor(nombre="FT. Katerine Arce ", especialidad="Máster en terapia manual", imagen="Katerine Arce.jpg"),
+                Doctor(nombre="FT. Andres Heredia", especialidad="Máster en terapia manual", imagen="Javier Ponce.jpg"),
 
             ]
             
@@ -499,7 +501,7 @@ def generar_qr_pasante(pasante_id):
         return "Pasante no encontrado", 404
 
     # 🟢 Generar el QR con la IP correcta
-    url_qr = f"http://10.180.0.30:5000/escanear_qr_pasante?qr_code={pasante.id}"
+    url_qr = f"http://10.180.0.15:5000/escanear_qr_pasante?qr_code={pasante.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)
@@ -598,7 +600,7 @@ def generar_qr_doctor(doctor_id):
         return "Doctor no encontrado", 404
 
     # 🟢 Generar la URL correcta con la IP del servidor
-    url_qr = f"http://10.180.0.30:5000/escanear_qr_doctor?qr_code={doctor.id}"
+    url_qr = f"http://10.180.0.15:5000/escanear_qr_doctor?qr_code={doctor.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)

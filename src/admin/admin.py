@@ -3,8 +3,11 @@ from models.pasante import Pasante
 from models.doctor import Doctor
 from models.reserva import Reserva
 from database import db
+from sqlalchemy import func
+from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__)
+
 
 @admin_bp.route('/admin')
 def index():
@@ -44,12 +47,43 @@ def agregar_doctor():
     # Similar a agregar_pasante, pero para doctores
     pass
 
-@admin_bp.route('/reservas')
+
+@admin_bp.route('/admin/reservas', methods=['GET', 'POST'])
 def ver_reservas():
     if not session.get('logged_in'):
         return redirect(url_for('login'))  # Redirigir si no está autenticado
-    reservas = Reserva.query.all()  # Obtener todas las reservas
-    return render_template('reservas.html', reservas=reservas)  # Renderizar la nueva plantilla
+
+    # Obtener la fecha seleccionada en el formulario (o usar la actual por defecto)
+    fecha_seleccionada = request.form.get('fecha')
+    if fecha_seleccionada:
+        fecha_inicio = datetime.strptime(fecha_seleccionada, '%Y-%m-%d')
+    else:
+        fecha_inicio = datetime.today()
+
+    # Calcular los días de la semana seleccionada
+    dias = [fecha_inicio + timedelta(days=i) for i in range(5)]  # De lunes a viernes
+
+    # Obtener todas las reservas en esa semana
+    reservas = Reserva.query.filter(Reserva.fecha >= dias[0].date(), Reserva.fecha <= dias[-1].date()).all()
+
+    # Obtener los pasantes con el número de reservas
+    pasantes_con_reservas = (
+        db.session.query(
+            Pasante.nombre, func.count(Reserva.id).label('total_reservas')
+        )
+        .outerjoin(Reserva, Pasante.id == Reserva.pasante_id)
+        .group_by(Pasante.id)
+        .order_by(func.count(Reserva.id).desc())  # Ordenar de mayor a menor reservas
+        .all()
+    )
+
+    return render_template(
+        'reservas.html',
+        reservas=reservas,
+        pasantes_con_reservas=pasantes_con_reservas,
+        dias=dias  # 🔹 Ahora pasamos 'dias' para evitar el error
+    )
+
 
 @admin_bp.route('/admin/editar_pasante', methods=['POST'])
 def editar_pasante():
