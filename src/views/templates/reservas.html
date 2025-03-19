@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=6">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
@@ -188,10 +188,11 @@
                             <td>
                                 {% for reserva in reservas %}
                                 {% if reserva.fecha == dia.date() and reserva.horario.startswith(hora) %}
-                                <button class="reserva-btn"
-                                    onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre}}')">
+                                <button class="reserva-btn pasante-{{ reserva.pasante.nombre.strip()|replace(' ', '-')|replace('ñ', 'n')|replace('á', 'a')|replace('é', 'e')|replace('í', 'i')|replace('ó', 'o')|replace('ú', 'u')|lower }}"
+                                    onclick="mostrarInfoAdmin('{{ reserva.id }}', '{{ reserva.nombre }}', '{{ reserva.email }}', '{{ reserva.fecha }}', '{{ reserva.celular }}', '{{reserva.tipo}}', '{{reserva.horario}}', '{{reserva.pasante.nombre.strip()}}')">
                                     {{ reserva.pasante.nombre }}
                                 </button>
+
                                 {% endif %}
                                 {% endfor %}
                             </td>
@@ -202,7 +203,12 @@
                 </table>
             </div>
             <div class="tabla-pasantes">
-                <h2>Pasantes y Reservas</h2>
+                <h2>Reservas por Pasante</h2>
+                <form method="POST">
+                    <label for="fecha">Seleccionar Día:</label>
+                    <input type="date" id="fecha" name="fecha" value="{{ dias[0].strftime('%Y-%m-%d') }}">
+                    <button type="submit">Filtrar</button>
+                </form>
                 <table class="table">
                     <thead>
                         <tr>
@@ -212,19 +218,13 @@
                         </tr>
                     </thead>
                     <tbody id="ranking-pasantes">
-                        {% if pasantes_con_reservas %}
-                            {% for pasante in pasantes_con_reservas %}
-                            <tr>
+                        {% for pasante in pasantes_con_reservas %}
+                            <tr data-fecha="{{ pasante.fecha }}">
                                 <td>{{ loop.index }}</td>
                                 <td>{{ pasante.nombre }}</td>
                                 <td>{{ pasante.total_reservas }}</td>
                             </tr>
                             {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="3" class="text-center">No hay pasantes con reservas registradas.</td>
-                            </tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -390,6 +390,20 @@
 
         // Actualizar cada 10 segundos sin afectar el calendario
         setInterval(actualizarRankingPasantes, 5000);
+
+        document.getElementById("form-filtro").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const fechaSeleccionada = document.getElementById("fecha").value;
+            
+            document.querySelectorAll("#ranking-pasantes tbody tr").forEach(row => {
+                const fechaReserva = row.getAttribute("data-fecha");
+                if (fechaReserva === fechaSeleccionada) {
+                    row.style.display = "table-row";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
 
     </script>
 </body>

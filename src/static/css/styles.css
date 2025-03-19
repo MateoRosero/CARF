@@ -563,3 +563,51 @@ button:hover {
     text-decoration: none;
     cursor: pointer;
 }
+
+/* Colores únicos para cada pasante */
+.pasante-jose-daniel-garcia-cruz {
+    background-color: #7FFF00 !important; /* Verde claro */
+    color: black;
+}
+
+.pasante-samuel-benjamin-martinez-cevallos {
+    background-color: #00ecfd !important; /* Morado eléctrico */
+    color: white;
+}
+
+.pasante-luis-antonio-gallardo-guachamin {
+    background-color: #06fa9c !important; /* Negro */
+    color: white;
+}
+
+.pasante-nathalia-emilia-sanchez-negrete {
+    background-color: hsl(0, 97%, 49%) !important;
+    color: white !important;
+}
+
+
+.pasante-jheyc-moises-santin-zapata {
+    background-color: #f70aeb !important; /* Negro */
+    color: white;
+}
+
+.pasante-alberth-oswaldo-bone-uches {
+    background-color: #19e3f1 !important; /* Negro */
+    color: white;
+}       
+
+.pasante-edison-javier-corral-arias {
+    background-color: #750808 !important; /* Negro */
+    color: white;
+}
+
+.pasante-nicolas-andres-canelos-salazar {
+    background-color: #ff0798 !important; /* Negro */
+    color: white;
+}
+
+
+
+
+
+/* Puedes agregar más colores para otros pasantes */
