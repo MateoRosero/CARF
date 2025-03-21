@@ -3,12 +3,12 @@ from database import db, init_db
 from config import Config
 from sqlalchemy import text
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 from admin.admin import admin_bp
 import qrcode
 import io
 import secrets
-import time
+#import time
 import jwt
 import uuid
 import socket
@@ -57,6 +57,8 @@ def insertar_doctores_iniciales():
                 Doctor(nombre="FT. Xavier Silva", especialidad="Máster en terapia manual", imagen="Xavier Silva.jpg"),
                 Doctor(nombre="FT. Katerine Arce ", especialidad="Máster en terapia manual", imagen="Katerine Arce.jpg"),
                 Doctor(nombre="FT. Andres Heredia", especialidad="Máster en terapia manual", imagen="Javier Ponce.jpg"),
+                Doctor(nombre="FT. Steve Negrete", especialidad="Coordinador", imagen="Javier Ponce.jpg"),
+                Doctor(nombre="FT. Claudia Iturralde", especialidad="Master en traumatología (Tutora)", imagen="Javier Ponce.jpg"),
 
             ]
             
@@ -300,8 +302,8 @@ TOKEN_EXPIRATION_SECONDS = 10
 
 def generate_token():
     payload = {
-        'iat': time.time(),
-        'exp': time.time() + TOKEN_EXPIRATION_SECONDS,  # Expira en 10 segundos
+        'iat': datetime.now(),
+        'exp': datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_SECONDS),  # Expira en 10 segundos
         'nonce': str(uuid.uuid4())  # Valor único para cada token
     }
     token = jwt.encode(payload, app.secret_key, algorithm='HS256')
@@ -501,7 +503,7 @@ def generar_qr_pasante(pasante_id):
         return "Pasante no encontrado", 404
 
     # 🟢 Generar el QR con la IP correcta
-    url_qr = f"http://10.180.0.15:5000/escanear_qr_pasante?qr_code={pasante.id}"
+    url_qr = f"http://10.180.0.19:5000/escanear_qr_pasante?qr_code={pasante.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)
@@ -600,7 +602,7 @@ def generar_qr_doctor(doctor_id):
         return "Doctor no encontrado", 404
 
     # 🟢 Generar la URL correcta con la IP del servidor
-    url_qr = f"http://10.180.0.15:5000/escanear_qr_doctor?qr_code={doctor.id}"
+    url_qr = f"http://10.180.0.19:5000/escanear_qr_doctor?qr_code={doctor.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)
@@ -642,7 +644,25 @@ def escanear_qr_doctor():
 
 @app.route('/asistencia_doctores')
 def asistencia_doctores():
-    asistencias = obtener_datos_asistencia_doctores()
+    asistencias = obtener_datos_asistencia_doctores()  # Asegúrate de que esta función devuelva las horas como objetos datetime.time
+
+    # Define los turnos y sus rangos permitidos
+    turnos = {
+        'mañana': (time(7, 0), time(7, 15)),
+        'medio_dia': (time(9, 20), time(9, 25)),
+        'tarde': (time(13, 0), time(13, 15))
+    }
+
+    for asistencia in asistencias:
+        hora_asistencia = asistencia['Hora']
+        asistencia['tardio'] = True  # Por defecto, se considera tardío
+
+        # Determina el turno y valida
+        for turno, (inicio, fin) in turnos.items():
+            if inicio <= hora_asistencia <= fin:
+                asistencia['tardio'] = False
+                break
+
     return render_template('asistencia_doctores.html', asistencias=asistencias)
 
 if __name__ == '__main__':
