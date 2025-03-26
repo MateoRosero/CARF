@@ -503,7 +503,7 @@ def generar_qr_pasante(pasante_id):
         return "Pasante no encontrado", 404
 
     # 🟢 Generar el QR con la IP correcta
-    url_qr = f"http://10.180.0.19:5000/escanear_qr_pasante?qr_code={pasante.id}"
+    url_qr = f"http://10.180.0.91:5000/escanear_qr_pasante?qr_code={pasante.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)
@@ -602,7 +602,7 @@ def generar_qr_doctor(doctor_id):
         return "Doctor no encontrado", 404
 
     # 🟢 Generar la URL correcta con la IP del servidor
-    url_qr = f"http://10.180.0.19:5000/escanear_qr_doctor?qr_code={doctor.id}"
+    url_qr = f"http://10.180.0.91:5000/escanear_qr_doctor?qr_code={doctor.id}"
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(url_qr)
